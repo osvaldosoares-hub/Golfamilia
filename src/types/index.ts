@@ -78,6 +78,7 @@ export interface LeaderboardEntry {
   coins_in_room: number
   bets_count: number
   rank: number
+  is_me?: boolean
 }
 
 export interface AuthSession {

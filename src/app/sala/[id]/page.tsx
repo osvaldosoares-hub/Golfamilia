@@ -31,7 +31,7 @@ export default async function SalaPage({ params }: { params: { id: string } }) {
   // Get user
   const { data: user } = await db
     .from('users')
-    .select('id, nickname, email, coins, avatar_color')
+    .select('id, nickname, email, coins, avatar_color, created_at')
     .eq('id', session.userId)
     .single()
 
@@ -59,6 +59,7 @@ export default async function SalaPage({ params }: { params: { id: string } }) {
     avatar_color: userMap[m.user_id]?.avatar_color || '#00D26A',
     total_points: m.total_points,
     coins_in_room: m.coins_in_room,
+    bets_count: 0,
     rank: i + 1,
     is_me: m.user_id === session.userId,
   }))

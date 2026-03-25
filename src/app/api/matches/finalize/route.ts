@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Get all rooms that have bets on this match (to know pts values)
-  const roomIds = [...new Set(bets.map(b => b.room_id))]
+  const roomIds = Array.from(new Set(bets.map(b => b.room_id)))
   const { data: rooms } = await db
     .from('rooms')
     .select('id, pts_exact, pts_winner')
