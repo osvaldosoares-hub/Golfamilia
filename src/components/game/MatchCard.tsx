@@ -9,13 +9,19 @@ interface BetData {
   predicted_qualifier?: string
 }
 
+interface BetStats {
+  total: number
+  counts: Record<string, number>
+}
+
 interface Props {
   match: Match
   existingBet?: Bet
   onBet: (data: BetData) => Promise<void>
+  betStats?: BetStats
 }
 
-export default function MatchCard({ match, existingBet, onBet }: Props) {
+export default function MatchCard({ match, existingBet, onBet, betStats }: Props) {
   const [scoreH, setScoreH] = useState<string>(existingBet ? String(existingBet.predicted_home) : '')
   const [scoreA, setScoreA] = useState<string>(existingBet ? String(existingBet.predicted_away) : '')
   const [qualifier, setQualifier] = useState<string>(existingBet?.predicted_qualifier || '')
@@ -129,6 +135,52 @@ export default function MatchCard({ match, existingBet, onBet }: Props) {
             <div className="text-xs text-muted">{match.away_abbr}</div>
           </div>
         </div>
+
+        {/* Bet distribution bar */}
+        {betStats && betStats.total > 0 && (() => {
+          const homeCount = betStats.counts[match.home_abbr] || 0
+          const drawCount = betStats.counts['DRAW'] || 0
+          const awayCount = betStats.counts[match.away_abbr] || 0
+          const total = betStats.total
+          const homePct = Math.round((homeCount / total) * 100)
+          const drawPct = Math.round((drawCount / total) * 100)
+          const awayPct = 100 - homePct - drawPct
+
+          return (
+            <div className="mb-4">
+              <div className="flex justify-between text-[10px] text-muted uppercase tracking-widest mb-1.5">
+                <span>📊 Palpites da sala ({total})</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] mb-1">
+                <span className="font-bold text-blue">{match.home_abbr} {homePct}%</span>
+                <span className="flex-1" />
+                <span className="font-bold text-muted">Empate {drawPct}%</span>
+                <span className="flex-1" />
+                <span className="font-bold text-red text-right">{match.away_abbr} {awayPct}%</span>
+              </div>
+              <div className="flex h-2 rounded-full overflow-hidden bg-dark-3 border border-white/[0.06]">
+                {homePct > 0 && (
+                  <div
+                    className="bg-blue transition-all duration-500"
+                    style={{ width: `${homePct}%` }}
+                  />
+                )}
+                {drawPct > 0 && (
+                  <div
+                    className="bg-white/20 transition-all duration-500"
+                    style={{ width: `${drawPct}%` }}
+                  />
+                )}
+                {awayPct > 0 && (
+                  <div
+                    className="bg-red transition-all duration-500"
+                    style={{ width: `${awayPct}%` }}
+                  />
+                )}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Qualifier + Bet amount */}
         {!locked && (

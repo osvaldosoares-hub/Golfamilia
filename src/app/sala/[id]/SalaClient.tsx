@@ -1,6 +1,6 @@
 'use client'
 // src/app/sala/[id]/SalaClient.tsx
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Navbar from '@/components/ui/Navbar'
@@ -35,6 +35,15 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
   const [roomBetLoading, setRoomBetLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'matches' | 'table'>('matches')
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+  const [betStats, setBetStats] = useState<Record<string, { total: number; counts: Record<string, number> }>>({})
+
+  // Fetch bet stats for the room
+  useEffect(() => {
+    fetch(`/api/bets/stats?room_id=${room.id}`)
+      .then(r => r.json())
+      .then(json => { if (json.data) setBetStats(json.data) })
+      .catch(() => {})
+  }, [room.id, bets])
 
   function toggleGroup(group: string) {
     setOpenGroups(prev => ({ ...prev, [group]: !prev[group] }))
@@ -321,6 +330,7 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
                                 match={match}
                                 existingBet={bets[match.id]}
                                 onBet={(data) => handleBet(match.id, data)}
+                                betStats={betStats[match.id]}
                               />
                             ))}
                           </div>
