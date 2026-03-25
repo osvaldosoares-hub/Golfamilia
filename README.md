@@ -40,8 +40,9 @@ cp .env.local.example .env.local
 Edite `.env.local` com suas credenciais do Supabase:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://cgptvijqxyhycqiqetik.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_1vznkTVSDpgXxz--MLVnDw_VEhJ0EX1
+
+NEXT_PUBLIC_SUPABASE_URL=https://SEU_PROJETO.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_anon_key
 SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
 JWT_SECRET=uma_chave_aleatoria_forte_aqui
 NEXT_PUBLIC_APP_URL=http://localhost:3000
