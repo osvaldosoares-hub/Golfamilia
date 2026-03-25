@@ -95,7 +95,7 @@ export async function GET() {
         { status: 502 }
       )
     }
-    console.log('Jogos da API:', await res.clone().json()) // Log para depuração
+    
     const apiMatches: ApiMatch[] = await res.json()
     const db = supabaseAdmin()
 
@@ -130,7 +130,7 @@ export async function GET() {
       .from('matches')
       .upsert(rows, { onConflict: 'match_code' })
       .select()
-    console.log('Resultado do upsert:', { data, error }) // Log para depuração
+    
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }

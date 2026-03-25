@@ -97,6 +97,6 @@ export async function POST(req: NextRequest) {
     console.error(memberError)
     return NextResponse.json({ error: 'Erro ao adicionar membro' }, { status: 500 })
   }
-  console.log(`Sala criada: ${room.name} (${room.code}) por ${session.nickname}`)
+  
   return NextResponse.json({ data: room }, { status: 201 })
 }

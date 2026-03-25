@@ -24,7 +24,7 @@ export default async function LobbyPage() {
     .from('room_members')
     .select('room_id, coins_in_room')
     .eq('user_id', session.userId)
-  console.log('Memberships:', memberships)
+  
   let rooms: any[] = []
   if (memberships?.length) {
     const roomIds = memberships.map(m => m.room_id)

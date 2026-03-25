@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   
 
   const { match_id, home_score, away_score } = await req.json()
-  console.log('Finalizando jogo', { match_id, home_score, away_score })
+  
   if (!match_id || home_score == null || away_score == null) {
     return NextResponse.json({ error: 'match_id, home_score e away_score obrigatórios' }, { status: 400 })
   }
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       status: 'finished',
     })
     .eq('id', match_id)
-    console.log('Match update result', { updatedMatch, error })
+    
   // Get ALL bets for this match (across all rooms)
   const { data: bets } = await db
     .from('bets')

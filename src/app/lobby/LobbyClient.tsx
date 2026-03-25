@@ -80,7 +80,7 @@ export default function LobbyClient({ user, initialRooms }: Props) {
     navigator.clipboard.writeText(code).catch(() => {})
     toast.success(`📋 Código ${code} copiado!`)
   }
- console.log(initialRooms)
+ 
   return (
     <>
       <Navbar user={currentUser} onAddCoins={() => setShowCoins(true)} />
