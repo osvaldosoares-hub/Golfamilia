@@ -1,0 +1,112 @@
+/* src/app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: 'DM Sans', sans-serif;
+  --font-mono: 'Space Mono', monospace;
+}
+
+@layer base {
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #080C12;
+    color: #E8EDF5;
+    font-family: var(--font-sans);
+  }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: #0E1420; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+}
+
+@layer components {
+  .bg-field {
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,210,106,0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 20% 100%, rgba(255,215,0,0.05) 0%, transparent 60%),
+      #080C12;
+  }
+
+  .bg-grid {
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 59px, rgba(255,255,255,0.02) 60px),
+      repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(255,255,255,0.02) 60px);
+    background-size: 60px 60px;
+  }
+
+  .card {
+    @apply bg-dark-2 border border-white/[0.08] rounded-2xl;
+  }
+
+  .card-accent-green { background: linear-gradient(90deg, #00D26A, #FFD700); }
+  .card-accent-blue  { background: linear-gradient(90deg, #3B82F6, #00D26A); }
+  .card-accent-gold  { background: linear-gradient(90deg, #FFD700, #FF4757); }
+
+  .input-base {
+    @apply w-full px-4 py-3 bg-dark-3 border border-white/[0.08] rounded-xl
+           text-white placeholder-white/30 outline-none transition-colors
+           focus:border-green;
+    font-family: var(--font-sans);
+  }
+
+  .btn-primary {
+    @apply bg-green text-black font-bold py-3 px-6 rounded-xl transition-all
+           hover:bg-green-dark hover:-translate-y-0.5 hover:shadow-lg
+           hover:shadow-green/30 disabled:opacity-50 disabled:cursor-not-allowed
+           disabled:hover:translate-y-0 disabled:hover:shadow-none;
+  }
+
+  .btn-gold {
+    @apply bg-gold text-black font-bold py-3 px-6 rounded-xl transition-all
+           hover:brightness-110 hover:-translate-y-0.5 hover:shadow-lg
+           hover:shadow-gold/30 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent border border-white/[0.08] text-white/70 font-bold
+           py-2 px-5 rounded-xl transition-all hover:border-green hover:text-green;
+  }
+
+  .btn-danger {
+    @apply bg-transparent border border-red/30 text-red font-bold
+           py-2 px-5 rounded-xl transition-all hover:bg-red/10;
+  }
+
+  .score-input {
+    @apply w-12 h-12 text-center bg-dark-3 border-2 border-white/[0.08] rounded-xl
+           text-white outline-none transition-colors focus:border-green;
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .phase-badge {
+    @apply text-xs font-bold uppercase tracking-widest text-green
+           border border-green/30 rounded-full px-3 py-1;
+  }
+}
+
+@layer utilities {
+  .text-muted { color: rgba(255,255,255,0.4); }
+  .border-subtle { border-color: rgba(255,255,255,0.08); }
+  .font-mono { font-family: var(--font-mono); }
+}
+
+/* Animations */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.animate-fade-up { animation: fadeUp 0.4s ease forwards; }
+.animate-fade-up-1 { animation: fadeUp 0.4s 0.1s ease both; }
+.animate-fade-up-2 { animation: fadeUp 0.4s 0.2s ease both; }
+.animate-fade-up-3 { animation: fadeUp 0.4s 0.3s ease both; }
