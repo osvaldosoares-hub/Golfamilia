@@ -32,6 +32,31 @@ export function formatCoins(n: number): string {
   return n?.toLocaleString('pt-BR')
 }
 
+const MONTH_MAP: Record<string, number> = {
+  Jan: 0, Fev: 1, Mar: 2, Abr: 3, Mai: 4, Jun: 5,
+  Jul: 6, Ago: 7, Set: 8, Out: 9, Nov: 10, Dez: 11,
+}
+
+/** Parse match_date ("11 Jun") + match_time ("19:00") into a UTC Date for 2026 */
+export function parseMatchDateTime(matchDate: string, matchTime: string): Date {
+  const [dayStr, monthStr] = matchDate.split(' ')
+  const [hourStr, minStr] = matchTime.split(':')
+  const month = MONTH_MAP[monthStr] ?? 0
+  return new Date(Date.UTC(2026, month, parseInt(dayStr), parseInt(hourStr), parseInt(minStr)))
+}
+
+/** Returns milliseconds until lockout (1h before kickoff). Negative = already locked. */
+export function msUntilLockout(matchDate: string, matchTime: string): number {
+  const kickoff = parseMatchDateTime(matchDate, matchTime)
+  const lockTime = kickoff.getTime() - 60 * 60 * 1000 // 1 hour before
+  return lockTime - Date.now()
+}
+
+/** Returns true if bets should be blocked (less than 1h before kickoff) */
+export function isBetLocked(matchDate: string, matchTime: string): boolean {
+  return msUntilLockout(matchDate, matchTime) <= 0
+}
+
 export function calcPoints(
   predicted_home: number,
   predicted_away: number,

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
+import { isBetLocked } from '@/lib/utils'
 
 // GET /api/group-bets?room_id=xxx — get my group bets in a room
 export async function GET(req: NextRequest) {
@@ -62,14 +63,22 @@ export async function POST(req: NextRequest) {
   // Check if group still has open matches (can't bet after group is locked)
   const { data: openMatches } = await db
     .from('matches')
-    .select('id')
+    .select('id, match_date, match_time')
     .eq('phase', 'group')
     .eq('group_label', group_label)
     .eq('status', 'open')
+    .order('match_date', { ascending: true })
+    .order('match_time', { ascending: true })
     .limit(1)
 
   if (!openMatches || openMatches.length === 0) {
     return NextResponse.json({ error: 'Apostas encerradas para este grupo' }, { status: 400 })
+  }
+
+  // Block group bets 1 hour before the first match in the group
+  const firstMatch = openMatches[0]
+  if (isBetLocked(firstMatch.match_date, firstMatch.match_time)) {
+    return NextResponse.json({ error: 'Apostas encerradas — menos de 1h para o primeiro jogo do grupo' }, { status: 400 })
   }
 
   // Upsert

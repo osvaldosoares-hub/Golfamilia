@@ -2,6 +2,7 @@
 // src/components/game/MatchCard.tsx
 import { useState, useEffect } from 'react'
 import type { Match, Bet } from '@/types'
+import { msUntilLockout } from '@/lib/utils'
 
 interface BetData {
   predicted_home: number
@@ -27,9 +28,24 @@ export default function MatchCard({ match, existingBet, onBet, betStats }: Props
   const [qualifier, setQualifier] = useState<string>(existingBet?.predicted_qualifier || '')
   const [loading, setLoading] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [timeLeft, setTimeLeft] = useState<number>(() => msUntilLockout(match.match_date, match.match_time))
 
+  // Countdown timer — update every second when < 2 hours
+  useEffect(() => {
+    const ms = msUntilLockout(match.match_date, match.match_time)
+    setTimeLeft(ms)
+    if (ms <= 0 || ms > 2 * 60 * 60 * 1000) return
+    const interval = setInterval(() => {
+      const remaining = msUntilLockout(match.match_date, match.match_time)
+      setTimeLeft(remaining)
+      if (remaining <= 0) clearInterval(interval)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [match.match_date, match.match_time])
+
+  const timeLocked = timeLeft <= 0
   const hasBet = !!existingBet && !editing
-  const locked = match.status !== 'open'
+  const locked = match.status !== 'open' || timeLocked
 
   const canSubmit = scoreH !== '' && scoreA !== ''
 
@@ -60,9 +76,18 @@ export default function MatchCard({ match, existingBet, onBet, betStats }: Props
     }
   }, [scoreH, scoreA])
 
+  // Format countdown string
+  const countdownLabel = (() => {
+    if (timeLeft <= 0) return null
+    if (timeLeft > 60 * 60 * 1000) return null // only show when < 1h
+    const mins = Math.floor(timeLeft / 60000)
+    const secs = Math.floor((timeLeft % 60000) / 1000)
+    return `⏱ ${mins}:${String(secs).padStart(2, '0')}`
+  })()
+
   return (
     <div className={`card overflow-hidden transition-all ${hasBet ? 'border-green/20' : 'hover:border-white/20'}`}>
-      <div className={`h-[2px] ${hasBet ? 'bg-green' : 'bg-white/[0.04]'}`} />
+      <div className={`h-[2px] ${hasBet ? 'bg-green' : timeLocked ? 'bg-red' : 'bg-white/[0.04]'}`} />
 
       <div className="p-5">
         {/* Meta */}
@@ -70,12 +95,19 @@ export default function MatchCard({ match, existingBet, onBet, betStats }: Props
           <span className="text-xs text-muted font-mono">
             ⚽ Grupo {match.group_label} · {match.match_date} {match.match_time}
           </span>
-          <div className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-            locked ? 'bg-red/10 text-red' :
-            hasBet ? 'bg-green/10 text-green' :
-            'bg-white/[0.06] text-muted'
-          }`}>
-            {locked ? '🔒 Encerrado' : hasBet ? '✅ Aposta feita' : '🕐 Aberto'}
+          <div className="flex items-center gap-1.5">
+            {countdownLabel && !locked && (
+              <div className="text-xs font-bold px-2.5 py-1 rounded-full bg-gold/10 text-gold animate-pulse">
+                {countdownLabel}
+              </div>
+            )}
+            <div className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+              locked ? 'bg-red/10 text-red' :
+              hasBet ? 'bg-green/10 text-green' :
+              'bg-white/[0.06] text-muted'
+            }`}>
+              {locked ? '🔒 Encerrado' : hasBet ? '✅ Aposta feita' : '🕐 Aberto'}
+            </div>
           </div>
         </div>
 
@@ -247,7 +279,9 @@ export default function MatchCard({ match, existingBet, onBet, betStats }: Props
 
         {locked && (
           <div className="pt-3 border-t border-white/[0.06] text-xs text-muted text-center">
-            Apostas encerradas para este jogo
+            {timeLocked && match.status === 'open'
+              ? '⏱ Apostas encerradas — menos de 1h para o início do jogo'
+              : 'Apostas encerradas para este jogo'}
           </div>
         )}
       </div>
