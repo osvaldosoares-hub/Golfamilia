@@ -21,8 +21,8 @@ export const metadata: Metadata = {
   title: 'GolFamilia — Apostas da Copa com Amigos',
   description: 'Bolão da Copa do Mundo. Aposte nos placares, escolha os classificados e dispute com seus amigos!',
   icons: {
-    icon: '/favicon.jpeg',
-    apple: '/favicon.jpeg',
+    icon: '/favicon-32x32.png',
+    apple: '/favicon-32x32.png',
   },
 }
 
