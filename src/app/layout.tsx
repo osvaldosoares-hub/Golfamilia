@@ -29,8 +29,22 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" className={`${dmSans.variable} ${spaceMono.variable}`}>
-      <body className="bg-dark text-white antialiased">
-        {children}
+      <body className="bg-dark text-white antialiased flex flex-col min-h-screen">
+        <main className="flex-1">{children}</main>
+
+        <footer className="border-t border-white/10 bg-dark/80 py-6">
+          <div className="mx-auto flex flex-col items-center gap-3 px-4">
+            <img
+              src="/osvaldo.jpg"
+              alt="Osvaldo Soares Landim Junior"
+              className="h-12 w-12 rounded-full object-cover ring-2 ring-emerald-500/60"
+            />
+            <p className="text-sm text-gray-400">
+              Feito por <span className="font-semibold text-white">Osvaldo Soares Landim Junior</span>
+            </p>
+          </div>
+        </footer>
+
         <Toaster
           position="bottom-right"
           toastOptions={{
