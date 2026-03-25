@@ -20,6 +20,10 @@ const spaceMono = Space_Mono({
 export const metadata: Metadata = {
   title: 'GolFamilia — Apostas da Copa com Amigos',
   description: 'Bolão da Copa do Mundo. Aposte nos placares, escolha os classificados e dispute com seus amigos!',
+  icons: {
+    icon: '/favicon.jpeg',
+    apple: '/favicon.jpeg',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

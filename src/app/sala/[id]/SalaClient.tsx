@@ -34,6 +34,11 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
   const [roomBetAmount, setRoomBetAmount] = useState('')
   const [roomBetLoading, setRoomBetLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'matches' | 'table'>('matches')
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+
+  function toggleGroup(group: string) {
+    setOpenGroups(prev => ({ ...prev, [group]: !prev[group] }))
+  }
 
   // Group matches (só fase de grupos por enquanto)
   const grouped = useMemo(() => {
@@ -283,24 +288,46 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
               {/* Matches tab */}
               {activeTab === 'matches' && (
                 <div className="space-y-8">
-                  {Object.entries(grouped).map(([group, groupMatches]) => (
-                    <div key={group}>
-                      <div className="flex items-center gap-3 mb-4">
-                        <span className="phase-badge">{group}</span>
-                        <div className="flex-1 h-px bg-white/[0.06]" />
+                  {Object.entries(grouped).map(([group, groupMatches]) => {
+                    const isOpen = openGroups[group] ?? false
+                    const betCount = groupMatches.filter(m => bets[m.id]).length
+                    const label = groupMatches[0]?.group_label
+                    const teams = label ? groupTeams[label] || [] : []
+                    return (
+                      <div key={group}>
+                        <button
+                          onClick={() => toggleGroup(group)}
+                          className="w-full flex items-center gap-3 mb-2 group cursor-pointer"
+                        >
+                          <span className="phase-badge">{group}</span>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {teams.map(t => (
+                              <span key={t.abbr} className="text-sm" title={t.name}>{t.name} --</span>
+                            ))}
+                          </div>
+                          <span className="text-[10px] text-muted whitespace-nowrap">
+                            {betCount}/{groupMatches.length} palpites
+                          </span>
+                          <div className="flex-1 h-px bg-white/[0.06]" />
+                          <span className={`text-muted text-xs transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+                            ▼
+                          </span>
+                        </button>
+                        {isOpen && (
+                          <div className="space-y-3 animate-fade-up">
+                            {groupMatches.map(match => (
+                              <MatchCard
+                                key={match.id}
+                                match={match}
+                                existingBet={bets[match.id]}
+                                onBet={(data) => handleBet(match.id, data)}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <div className="space-y-3">
-                        {groupMatches.map(match => (
-                          <MatchCard
-                            key={match.id}
-                            match={match}
-                            existingBet={bets[match.id]}
-                            onBet={(data) => handleBet(match.id, data)}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
 
