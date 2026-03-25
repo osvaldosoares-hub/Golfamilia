@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     room_id: room.id,
     user_id: session.userId,
     coins_in_room: 0,
-    is_active: true,
+   
   })
 
   if (memberError) {
