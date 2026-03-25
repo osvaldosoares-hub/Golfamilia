@@ -6,7 +6,8 @@ import { toast } from 'sonner'
 import Navbar from '@/components/ui/Navbar'
 import AddCoinsModal from '@/components/ui/AddCoinsModal'
 import MatchCard from '@/components/game/MatchCard'
-import type { User, Room, Match, Bet, LeaderboardEntry } from '@/types'
+import GroupTableCard from '@/components/game/GroupTableCard'
+import type { User, Room, Match, Bet, LeaderboardEntry, GroupBet, GroupTeamInfo } from '@/types'
 import { formatCoins, getAvatarColor, getAvatarTextColor } from '@/lib/utils'
 
 interface Props {
@@ -15,30 +16,59 @@ interface Props {
   leaderboard: LeaderboardEntry[]
   matches: Match[]
   initialBets: Bet[]
+  initialGroupBets: GroupBet[]
   myCoinsInRoom: number
 }
 
-export default function SalaClient({ user, room, leaderboard, matches, initialBets, myCoinsInRoom }: Props) {
+export default function SalaClient({ user, room, leaderboard, matches, initialBets, initialGroupBets, myCoinsInRoom }: Props) {
   const router = useRouter()
   const [currentUser, setCurrentUser] = useState(user)
   const [bets, setBets] = useState<Record<string, Bet>>(
     Object.fromEntries(initialBets.map(b => [b.match_id, b]))
   )
+  const [groupBets, setGroupBets] = useState<Record<string, GroupBet>>(
+    Object.fromEntries(initialGroupBets.map(b => [b.group_label, b]))
+  )
   const [showCoins, setShowCoins] = useState(false)
   const [coinsInRoom, setCoinsInRoom] = useState(myCoinsInRoom)
   const [roomBetAmount, setRoomBetAmount] = useState('')
   const [roomBetLoading, setRoomBetLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<'matches' | 'table'>('matches')
 
-  // Group matches
+  // Group matches (só fase de grupos por enquanto)
   const grouped = useMemo(() => {
     const map: Record<string, Match[]> = {}
-    matches.forEach(m => {
-      const key = m.phase === 'group' ? `Grupo ${m.group_label}` : m.phase
-      if (!map[key]) map[key] = []
-      map[key].push(m)
-    })
+    matches
+      .filter(m => m.phase === 'group')
+      .forEach(m => {
+        const key = `Grupo ${m.group_label}`
+        if (!map[key]) map[key] = []
+        map[key].push(m)
+      })
     return map
   }, [matches])
+
+  // Teams per group (for table betting)
+  const groupTeams = useMemo(() => {
+    const map: Record<string, GroupTeamInfo[]> = {}
+    matches
+      .filter(m => m.phase === 'group' && m.group_label)
+      .forEach(m => {
+        const g = m.group_label!
+        if (!map[g]) map[g] = []
+        const addTeam = (abbr: string, name: string, flag: string) => {
+          if (abbr && !map[g].find(t => t.abbr === abbr)) {
+            map[g].push({ abbr, name, flag })
+          }
+        }
+        addTeam(m.home_abbr, m.home_team, m.home_flag)
+        addTeam(m.away_abbr, m.away_team, m.away_flag)
+      })
+    return map
+  }, [matches])
+
+  const sortedGroupLabels = useMemo(() =>
+    Object.keys(groupTeams).sort(), [groupTeams])
 
   function copyCode() {
     navigator.clipboard.writeText(room.code).catch(() => {})
@@ -88,6 +118,23 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
     toast.success('✅ Palpite confirmado!')
   }
 
+  async function handleGroupBet(groupLabel: string, data: {
+    first_team: string
+    second_team: string
+    third_team: string
+  }) {
+    const res = await fetch('/api/group-bets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ room_id: room.id, group_label: groupLabel, ...data }),
+    })
+    const json = await res.json()
+    if (!res.ok) { toast.error(json.error || 'Erro ao salvar palpite'); return }
+
+    setGroupBets(prev => ({ ...prev, [groupLabel]: json.data }))
+    toast.success('✅ Palpite de tabela confirmado!')
+  }
+   // Log para depuração
   return (
     <>
       <Navbar user={currentUser} onAddCoins={() => setShowCoins(true)} />
@@ -140,7 +187,9 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
                   {[
                     { label: 'Placar exato', pts: room.pts_exact, icon: '🎯' },
                     { label: 'Vencedor certo', pts: room.pts_winner, icon: '✅' },
-                    
+                    { label: 'Tabela — 1 posição', pts: 2, icon: '📊' },
+                    { label: 'Tabela — 2 posições', pts: 4, icon: '📊' },
+                    { label: 'Tabela — 3 posições', pts: 10, icon: '🏆' },
                   ].map(r => (
                     <div key={r.label} className="flex justify-between items-center text-sm">
                       <span className="text-muted">{r.icon} {r.label}</span>
@@ -213,26 +262,68 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
               </div>
             </div>
 
-            {/* RIGHT: Matches */}
-            <div className="space-y-8 animate-fade-up-2">
-              {Object.entries(grouped).map(([group, groupMatches]) => (
-                <div key={group}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="phase-badge">{group}</span>
-                    <div className="flex-1 h-px bg-white/[0.06]" />
-                  </div>
-                  <div className="space-y-3">
-                    {groupMatches.map(match => (
-                      <MatchCard
-                        key={match.id}
-                        match={match}
-                        existingBet={bets[match.id]}
-                        onBet={(data) => handleBet(match.id, data)}
+            {/* RIGHT: Tabs + Content */}
+            <div className="space-y-6 animate-fade-up-2">
+              {/* Tab switcher */}
+              <div className="flex border border-white/[0.08] rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setActiveTab('matches')}
+                  className={`flex-1 py-2.5 text-sm font-bold transition-all ${activeTab === 'matches' ? 'bg-green text-black' : 'text-white/40 hover:text-white'}`}
+                >
+                  ⚽ Jogos
+                </button>
+                <button
+                  onClick={() => setActiveTab('table')}
+                  className={`flex-1 py-2.5 text-sm font-bold transition-all ${activeTab === 'table' ? 'bg-green text-black' : 'text-white/40 hover:text-white'}`}
+                >
+                  📊 Tabela
+                </button>
+              </div>
+
+              {/* Matches tab */}
+              {activeTab === 'matches' && (
+                <div className="space-y-8">
+                  {Object.entries(grouped).map(([group, groupMatches]) => (
+                    <div key={group}>
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="phase-badge">{group}</span>
+                        <div className="flex-1 h-px bg-white/[0.06]" />
+                      </div>
+                      <div className="space-y-3">
+                        {groupMatches.map(match => (
+                          <MatchCard
+                            key={match.id}
+                            match={match}
+                            existingBet={bets[match.id]}
+                            onBet={(data) => handleBet(match.id, data)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Table tab */}
+              {activeTab === 'table' && (
+                <div className="space-y-6">
+                  <p className="text-xs text-muted">
+                    Aposte em quem termina em 1º, 2º e 3º lugar de cada grupo.
+                    Quanto mais posições acertar, mais pontos você ganha!
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {sortedGroupLabels.map(label => (
+                      <GroupTableCard
+                        key={label}
+                        groupLabel={label}
+                        teams={groupTeams[label]}
+                        existingBet={groupBets[label]}
+                        onBet={(data) => handleGroupBet(label, data)}
                       />
                     ))}
                   </div>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>

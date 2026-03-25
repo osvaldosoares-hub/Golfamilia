@@ -78,6 +78,13 @@ export default async function SalaPage({ params }: { params: { id: string } }) {
     .eq('room_id', params.id)
     .eq('user_id', session.userId)
 
+  // My group bets in this room
+  const { data: groupBets } = await db
+    .from('group_bets')
+    .select('*')
+    .eq('room_id', params.id)
+    .eq('user_id', session.userId)
+
   return (
     <SalaClient
       user={user}
@@ -85,6 +92,7 @@ export default async function SalaPage({ params }: { params: { id: string } }) {
       leaderboard={leaderboard}
       matches={matches || []}
       initialBets={bets || []}
+      initialGroupBets={groupBets || []}
       myCoinsInRoom={myMembership.coins_in_room}
     />
   )

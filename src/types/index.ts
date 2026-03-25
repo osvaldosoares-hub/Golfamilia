@@ -70,6 +70,25 @@ export interface Bet {
   match?: Match
 }
 
+export interface GroupBet {
+  id: string
+  room_id: string
+  user_id: string
+  group_label: string
+  first_team: string
+  second_team: string
+  third_team: string
+  points_earned?: number
+  created_at: string
+  updated_at: string
+}
+
+export interface GroupTeamInfo {
+  abbr: string
+  name: string
+  flag: string
+}
+
 export interface LeaderboardEntry {
   user_id: string
   nickname: string
