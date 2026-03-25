@@ -73,7 +73,7 @@ export default function AuthForm({ defaultTab }: Props) {
           <h1 className="text-4xl font-black tracking-widest uppercase text-green">
             Gol<span className="text-gold">Familia</span>
           </h1>
-          <p className="text-muted text-sm mt-2">Bolão da Copa do Mundo com seus amigos</p>
+          <p className="text-muted text-sm mt-2">Bolão da Copa do Mundo com seus amigos e familia</p>
         </div>
 
         {/* Tabs */}
@@ -136,7 +136,7 @@ export default function AuthForm({ defaultTab }: Props) {
               <input
                 type="text"
                 className="input-base"
-                placeholder="Ex: Pelezinho, Rainha..."
+                placeholder="Ex: Gabi, aninha, Mathias, bilinhas..."
                 value={regNick}
                 onChange={e => setRegNick(e.target.value)}
                 maxLength={20}
