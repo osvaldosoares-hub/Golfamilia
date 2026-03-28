@@ -1,4 +1,4 @@
-﻿// src/app/api/seed/route.ts
+// src/app/api/seed/route.ts
 // Rota para popular o banco de dados com jogos da Copa 2026
 // Chame GET /api/seed para rodar (apenas uma vez)
 
