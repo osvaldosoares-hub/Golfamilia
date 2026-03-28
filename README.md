@@ -46,6 +46,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_anon_key
 SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
 JWT_SECRET=uma_chave_aleatoria_forte_aqui
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+MATCH_SYNC_SECRET=uma_chave_secreta_para_sync
 ```
 
 > As chaves ficam em: Supabase Dashboard → Settings → API
@@ -57,6 +58,23 @@ npm run dev
 ```
 
 Acesse: [http://localhost:3000](http://localhost:3000)
+
+### 5. Sincronizacao automatica de jogos e pontuacao
+
+O projeto agora possui a rota `GET /api/matches/sync` que:
+
+- busca jogos atualizados da API externa;
+- faz upsert dos jogos no banco;
+- finaliza automaticamente os jogos que passaram para `finished`;
+- calcula pontos e atualiza ranking automaticamente.
+
+Para chamar manualmente com seguranca:
+
+```bash
+curl -H "x-sync-secret: SUA_MATCH_SYNC_SECRET" http://localhost:3000/api/matches/sync
+```
+
+Em deploy na Vercel, o arquivo `vercel.json` agenda essa rota a cada 5 minutos.
 
 
 ## 🎮 Como funciona

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:backend": "powershell -ExecutionPolicy Bypass -File ./scripts/test-backend.ps1"
   },
   "dependencies": {
     "@supabase/ssr": "^0.3.0",

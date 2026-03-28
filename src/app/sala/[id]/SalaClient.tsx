@@ -35,7 +35,13 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
   const [roomBetLoading, setRoomBetLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'matches' | 'table'>('matches')
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
-  const [betStats, setBetStats] = useState<Record<string, { total: number; counts: Record<string, number> }>>({})
+  const [betStats, setBetStats] = useState<Record<string, {
+    total: number
+    counts: Record<string, number>
+    avg_home: number | null
+    avg_away: number | null
+    scores_count: number
+  }>>({})
 
   // Fetch bet stats for the room
   useEffect(() => {

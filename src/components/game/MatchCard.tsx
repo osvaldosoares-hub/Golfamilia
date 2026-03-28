@@ -13,6 +13,9 @@ interface BetData {
 interface BetStats {
   total: number
   counts: Record<string, number>
+  avg_home: number | null
+  avg_away: number | null
+  scores_count: number
 }
 
 interface Props {
@@ -167,7 +170,7 @@ export default function MatchCard({ match, existingBet, onBet, betStats }: Props
             <div className="text-xs text-muted">{match.away_abbr}</div>
           </div>
         </div>
-
+          
         {/* Bet distribution bar */}
         {betStats && betStats.total > 0 && (() => {
           const homeCount = betStats.counts[match.home_abbr] || 0
@@ -210,6 +213,14 @@ export default function MatchCard({ match, existingBet, onBet, betStats }: Props
                   />
                 )}
               </div>
+              {betStats.scores_count > 0 && betStats.avg_home != null && betStats.avg_away != null && (
+                <div className="mt-2 text-[11px] text-muted">
+                  📈 Média de placar: <span className="text-white font-bold">{betStats.avg_home}</span>
+                  <span className="mx-1">x</span>
+                  <span className="text-white font-bold">{betStats.avg_away}</span>
+                  <span className="ml-1 text-[10px]">({betStats.scores_count} palpites)</span>
+                </div>
+              )}
             </div>
           )
         })()}
