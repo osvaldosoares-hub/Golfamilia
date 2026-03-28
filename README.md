@@ -74,7 +74,7 @@ Para chamar manualmente com seguranca:
 curl -H "x-sync-secret: SUA_MATCH_SYNC_SECRET" http://localhost:3000/api/matches/sync
 ```
 
-Em deploy na Vercel, o arquivo `vercel.json` agenda essa rota a cada 5 minutos.
+Em deploy na Vercel, o arquivo `vercel.json` agenda essa rota 1 vez por dia (03:00 UTC), compatível com plano Hobby.
 
 
 ## 🎮 Como funciona
