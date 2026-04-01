@@ -346,6 +346,29 @@ export default function KnockoutBracket({ matches, bets, groupBets, teamMetaByAb
 
   const finalMatch = matchesByNumberSimulated.get(104)
 
+  const mobileRounds = useMemo(() => {
+    const unique = (items: Array<SimulatedMatch | undefined>) => {
+      const seen = new Set<string>()
+      return items.filter((item): item is SimulatedMatch => {
+        if (!item) return false
+        if (seen.has(item.id)) return false
+        seen.add(item.id)
+        return true
+      })
+    }
+
+    return {
+      r32: unique([...leftBracket.r32, ...rightBracket.r32]),
+      r16: unique([...leftBracket.r16, ...rightBracket.r16]),
+      qf: unique([...leftBracket.qf, ...rightBracket.qf]),
+      sf: unique([...leftBracket.sf, ...rightBracket.sf]),
+      final: finalMatch ? [finalMatch] : [],
+      third: [],
+    }
+  }, [leftBracket, rightBracket, finalMatch])
+
+  const mobileVisibleRounds = KNOCKOUT_PHASE_ORDER.filter(phase => (mobileRounds[phase as keyof typeof mobileRounds] || []).length > 0)
+
   if (visibleRounds.length === 0) {
     return (
       <div className="card p-6 text-center text-sm text-muted">
@@ -355,7 +378,7 @@ export default function KnockoutBracket({ matches, bets, groupBets, teamMetaByAb
   }
 
   return (
-    <div className="space-y-4 w-[1200px]">
+    <div className="space-y-4 w-full max-w-full xl:w-[1200px]">
       <div className="flex justify-end">
         <button
           type="button"
@@ -471,15 +494,18 @@ export default function KnockoutBracket({ matches, bets, groupBets, teamMetaByAb
         </div>
       </div>
 
-      <div className="xl:hidden overflow-x-auto pb-2">
-        <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${visibleRounds.length}, minmax(260px, 1fr))`, minWidth: `${visibleRounds.length * 280}px` }}>
-          {visibleRounds.map(phase => (
-            <div key={phase} className="space-y-3">
+      <div className="space-y-5 xl:hidden pb-2">
+        <div className="text-xs text-muted">
+          No celular, os confrontos aparecem em lista por fase para facilitar a navegação.
+        </div>
+        <div className="space-y-5">
+          {mobileVisibleRounds.map(phase => (
+            <div key={phase} className="space-y-3 card p-4">
               <div className="text-xs font-bold uppercase tracking-widest text-green border border-green/20 rounded-full px-3 py-1 inline-flex">
                 {getPhaseLabel(phase)}
               </div>
               <div className="space-y-3">
-                {rounds[phase].map(match => (
+                {mobileRounds[phase as keyof typeof mobileRounds].map(match => (
                   <KnockoutMatchCard
                     key={match.id}
                     match={match}
