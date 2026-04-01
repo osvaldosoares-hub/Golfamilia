@@ -49,8 +49,34 @@ export default function MatchCard({ match, existingBet, onBet, betStats }: Props
   const timeLocked = timeLeft <= 0
   const hasBet = !!existingBet && !editing
   const locked = match.status !== 'open' || timeLocked
+  const isFinished = match.home_score != null && match.away_score != null
+
+  // If the match gets locked/finished while the user is editing, return to view mode.
+  useEffect(() => {
+    if (locked && editing) {
+      setEditing(false)
+    }
+  }, [locked, editing])
 
   const canSubmit = scoreH !== '' && scoreA !== ''
+
+  const realWinnerLabel = (() => {
+    if (!isFinished) return null
+    if (match.qualifier === 'DRAW') return '🤝 Empate'
+    if (match.qualifier === match.home_abbr) return `${match.home_flag} ${match.home_abbr}`
+    if (match.qualifier === match.away_abbr) return `${match.away_flag} ${match.away_abbr}`
+    return match.qualifier || '—'
+  })()
+
+  const predictedWinnerLabel = (() => {
+    if (!existingBet?.predicted_qualifier) return null
+    if (existingBet.predicted_qualifier === 'DRAW') return '🤝 Empate'
+    if (existingBet.predicted_qualifier === match.home_abbr) return `${match.home_flag} ${match.home_abbr}`
+    if (existingBet.predicted_qualifier === match.away_abbr) return `${match.away_flag} ${match.away_abbr}`
+    return existingBet.predicted_qualifier
+  })()
+
+  const earnedPoints = existingBet?.points_earned
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -127,7 +153,30 @@ export default function MatchCard({ match, existingBet, onBet, betStats }: Props
           <div className="flex flex-col items-center gap-1">
             <div className="text-[10px] text-muted uppercase tracking-widest mb-1">Placar</div>
             <div className="flex items-center gap-2">
-              {hasBet ? (
+              {hasBet && isFinished ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-muted uppercase tracking-widest">A</span>
+                    <div className="w-10 h-10 flex items-center justify-center bg-dark-3 border border-green/20 rounded-lg font-mono text-lg font-bold text-green">
+                      {existingBet!.predicted_home}
+                    </div>
+                    <span className="text-muted text-lg font-bold">:</span>
+                    <div className="w-10 h-10 flex items-center justify-center bg-dark-3 border border-green/20 rounded-lg font-mono text-lg font-bold text-green">
+                      {existingBet!.predicted_away}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-muted uppercase tracking-widest ">R</span>
+                    <div className="w-10 h-10 flex items-center justify-center bg-dark-3 border border-gold/30 rounded-lg font-mono text-lg font-black text-gold">
+                      {match.home_score}
+                    </div>
+                    <span className="text-muted text-lg font-bold">:</span>
+                    <div className="w-10 h-10 flex items-center justify-center bg-dark-3 border border-gold/30 rounded-lg font-mono text-lg font-black text-gold">
+                      {match.away_score}
+                    </div>
+                  </div>
+                </div>
+              ) : hasBet ? (
                 <div className="flex items-center gap-2">
                   <div className="w-12 h-12 flex items-center justify-center bg-dark-3 border border-green/20 rounded-xl font-mono text-xl font-bold text-green">
                     {existingBet!.predicted_home}
@@ -232,7 +281,7 @@ export default function MatchCard({ match, existingBet, onBet, betStats }: Props
             {hasBet ? (
               <div className="flex items-center justify-between pt-3 border-t border-white/[0.06]">
                 <div className="flex items-center gap-3">
-                  <div className="text-xs text-muted">Classificado:</div>
+                  <div className="text-xs text-muted">Palpite:</div>
                   <div className="text-xs font-bold text-white">
                     {existingBet!.predicted_qualifier === 'DRAW' ? '🤝 Empate/Ambos' :
                      existingBet!.predicted_qualifier === match.home_abbr ? `${match.home_flag} ${match.home_abbr}` :
@@ -289,10 +338,29 @@ export default function MatchCard({ match, existingBet, onBet, betStats }: Props
         )}
 
         {locked && (
-          <div className="pt-3 border-t border-white/[0.06] text-xs text-muted text-center">
-            {timeLocked && match.status === 'open'
-              ? '⏱ Apostas encerradas — menos de 1h para o início do jogo'
-              : 'Apostas encerradas para este jogo'}
+          <div className="pt-3 border-t border-white/[0.06] text-xs text-muted text-center space-y-2">
+            <div>
+              {timeLocked && match.status === 'open'
+                ? '⏱ Apostas encerradas — menos de 1h para o início do jogo'
+                : 'Apostas encerradas para este jogo'}
+            </div>
+            {isFinished && realWinnerLabel && (
+              <div className="space-y-1 text-[11px]">
+                {earnedPoints != null && (
+                  <div>
+                    Pontuação: <span className="font-bold text-gold">+{earnedPoints} pts</span>
+                  </div>
+                )}
+                {predictedWinnerLabel && (
+                  <div>
+                    Seu palpite: <span className="font-bold text-green">{predictedWinnerLabel}</span>
+                  </div>
+                )}
+                <div>
+                  Resultado: <span className="font-bold text-white">{realWinnerLabel}</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

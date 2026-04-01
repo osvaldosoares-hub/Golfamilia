@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import Navbar from '@/components/ui/Navbar'
 import AddCoinsModal from '@/components/ui/AddCoinsModal'
 import MatchCard from '@/components/game/MatchCard'
-import GroupTableCard from '@/components/game/GroupTableCard'
+import GroupTableCard from '../../../components/game/GroupTableCard'
 import KnockoutBracket from '@/components/game/KnockoutBracket'
 import type { User, Room, Match, Bet, LeaderboardEntry, GroupBet, GroupTeamInfo } from '@/types'
 import { formatCoins, getAvatarColor, getAvatarTextColor, isKnockoutBetReleased } from '@/lib/utils'
@@ -118,6 +118,65 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
 
   const sortedGroupLabels = useMemo(() =>
     Object.keys(groupTeams).sort(), [groupTeams])
+
+  const groupTop3ByLabel = useMemo(() => {
+    const result: Record<string, string[] | undefined> = {}
+
+    sortedGroupLabels.forEach((label) => {
+      const groupMatches = allMatches.filter(
+        (match) => (match.phase || '').toLowerCase() === 'group' && match.group_label === label
+      )
+
+      const isFinished =
+        groupMatches.length > 0 &&
+        groupMatches.every((match) => match.home_score != null && match.away_score != null)
+
+      if (!isFinished) {
+        result[label] = undefined
+        return
+      }
+
+      const table = new Map<string, { pts: number; gd: number; gf: number }>()
+      const ensureTeam = (abbr: string) => {
+        if (!table.has(abbr)) {
+          table.set(abbr, { pts: 0, gd: 0, gf: 0 })
+        }
+        return table.get(abbr)!
+      }
+
+      groupMatches.forEach((match) => {
+        const home = ensureTeam(match.home_abbr)
+        const away = ensureTeam(match.away_abbr)
+
+        const homeScore = Number(match.home_score)
+        const awayScore = Number(match.away_score)
+
+        home.gf += homeScore
+        away.gf += awayScore
+        home.gd += homeScore - awayScore
+        away.gd += awayScore - homeScore
+
+        if (homeScore > awayScore) home.pts += 3
+        else if (awayScore > homeScore) away.pts += 3
+        else {
+          home.pts += 1
+          away.pts += 1
+        }
+      })
+
+      result[label] = Array.from(table.entries())
+        .sort((a, b) => {
+          if (b[1].pts !== a[1].pts) return b[1].pts - a[1].pts
+          if (b[1].gd !== a[1].gd) return b[1].gd - a[1].gd
+          if (b[1].gf !== a[1].gf) return b[1].gf - a[1].gf
+          return a[0].localeCompare(b[0])
+        })
+        .slice(0, 3)
+        .map(([abbr]) => abbr)
+    })
+
+    return result
+  }, [allMatches, sortedGroupLabels])
 
   const teamMetaByAbbr = useMemo(() => {
     const map: Record<string, { name: string; flag: string }> = {}
@@ -461,7 +520,8 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
                         groupLabel={label}
                         teams={groupTeams[label]}
                         existingBet={groupBets[label]}
-                        onBet={(data) => handleGroupBet(label, data)}
+                        actualTop3={groupTop3ByLabel[label]}
+                        onBet={(data: { first_team: string; second_team: string; third_team: string }) => handleGroupBet(label, data)}
                       />
                     ))}
                   </div>
