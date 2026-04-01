@@ -370,7 +370,7 @@ export default function KnockoutBracket({ matches, bets, groupBets, teamMetaByAb
       {!isReleased && (
         <div className="card p-4 border-gold/30 bg-gold/5">
           <p className="text-sm text-gold font-bold">🔒 Mata-mata bloqueado para palpites até 27/06</p>
-          <p className="text-xs text-muted mt-1">Você já pode acompanhar os confrontos, mas os placares liberam somente no dia 27.</p>
+          <p className="text-xs text-muted mt-1">Você já pode acompanhar os confrontos, mas os placares liberam somente no dia 27. Aqui é uma simulação de acordo com o que você colocou na Tabela de Grupos, não é a oficial.</p>
         </div>
       )}
 
