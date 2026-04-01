@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth'
 
-const PUBLIC_PATHS = ['/login', '/register', '/api/auth/login', '/api/auth/register', '/api/auth/logout', '/api/matches/finalize', '/api/matches/sync', '/api/seed']
+const PUBLIC_PATHS = ['/login', '/register', '/api/auth/login', '/api/auth/register', '/api/auth/logout', '/api/matches/finalize', '/api/matches/sync', '/api/matches/recalculate', '/api/seed']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl

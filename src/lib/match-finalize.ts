@@ -214,9 +214,14 @@ export async function finalizeMatchAndScore(
     const room = roomMap[bet.room_id]
     if (!room) continue
 
+    const predictedHome = Number(bet.predicted_home)
+    const predictedAway = Number(bet.predicted_away)
+    const realHome = Number(homeScore)
+    const realAway = Number(awayScore)
+
     const winnerFromScore = qualifierFromScore(
-      bet.predicted_home,
-      bet.predicted_away,
+      predictedHome,
+      predictedAway,
       match.home_abbr,
       match.away_abbr
     )
@@ -224,8 +229,8 @@ export async function finalizeMatchAndScore(
     const winnerPick = bet.predicted_qualifier ?? winnerFromScore
 
     let points = 0
-    if (bet.predicted_home === homeScore && bet.predicted_away === awayScore) {
-      points = room.pts_exact
+    if (predictedHome === realHome && predictedAway === realAway) {
+      points = room.pts_exact + room.pts_winner
     } else if (winnerPick === realQualifier) {
       points = room.pts_winner
     }
