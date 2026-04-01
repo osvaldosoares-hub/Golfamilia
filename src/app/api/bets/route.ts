@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
-import { isBetLocked } from '@/lib/utils'
+import { isBetLocked, isKnockoutBetReleased } from '@/lib/utils'
 
 // GET /api/bets?room_id=xxx  — get my bets in a room
 export async function GET(req: NextRequest) {
@@ -62,12 +62,17 @@ export async function POST(req: NextRequest) {
   // Check match is still open
   const { data: match } = await db
     .from('matches')
-    .select('id, status, match_date, match_time')
+    .select('id, phase, status, match_date, match_time')
     .eq('id', match_id)
     .single()
 
   if (!match) return NextResponse.json({ error: 'Jogo não encontrado' }, { status: 404 })
   if (match.status !== 'open') return NextResponse.json({ error: 'Apostas encerradas para este jogo' }, { status: 400 })
+
+  // Knockout bets are only available from June 27th onward.
+  if (match.phase !== 'group' && !isKnockoutBetReleased()) {
+    return NextResponse.json({ error: 'Palpites do mata-mata liberam em 27/06' }, { status: 400 })
+  }
 
   // Block bets 1 hour before kickoff
   if (isBetLocked(match.match_date, match.match_time)) {

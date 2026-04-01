@@ -38,7 +38,7 @@ export interface RoomMember {
 export interface Match {
   id: string
   match_code: string
-  phase: 'group' | 'r16' | 'qf' | 'sf' | 'final'
+  phase: 'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'third' | 'final'
   group_label?: string
   home_team: string
   home_flag: string

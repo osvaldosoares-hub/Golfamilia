@@ -7,8 +7,9 @@ import Navbar from '@/components/ui/Navbar'
 import AddCoinsModal from '@/components/ui/AddCoinsModal'
 import MatchCard from '@/components/game/MatchCard'
 import GroupTableCard from '@/components/game/GroupTableCard'
+import KnockoutBracket from '@/components/game/KnockoutBracket'
 import type { User, Room, Match, Bet, LeaderboardEntry, GroupBet, GroupTeamInfo } from '@/types'
-import { formatCoins, getAvatarColor, getAvatarTextColor } from '@/lib/utils'
+import { formatCoins, getAvatarColor, getAvatarTextColor, isKnockoutBetReleased } from '@/lib/utils'
 
 interface Props {
   user: User
@@ -23,6 +24,7 @@ interface Props {
 export default function SalaClient({ user, room, leaderboard, matches, initialBets, initialGroupBets, myCoinsInRoom }: Props) {
   const router = useRouter()
   const [currentUser, setCurrentUser] = useState(user)
+  const [allMatches, setAllMatches] = useState(matches)
   const [bets, setBets] = useState<Record<string, Bet>>(
     Object.fromEntries(initialBets.map(b => [b.match_id, b]))
   )
@@ -33,8 +35,10 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
   const [coinsInRoom, setCoinsInRoom] = useState(myCoinsInRoom)
   const [roomBetAmount, setRoomBetAmount] = useState('')
   const [roomBetLoading, setRoomBetLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'matches' | 'table'>('matches')
+  const [simulateLoading, setSimulateLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<'matches' | 'knockout' | 'table'>('matches')
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+  const [knockoutReleased, setKnockoutReleased] = useState(() => isKnockoutBetReleased())
   const [betStats, setBetStats] = useState<Record<string, {
     total: number
     counts: Record<string, number>
@@ -51,6 +55,27 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
       .catch(() => {})
   }, [room.id, bets])
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setKnockoutReleased(isKnockoutBetReleased())
+    }, 60 * 1000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetch('/api/matches')
+        .then(r => r.json())
+        .then(json => {
+          if (json.data) setAllMatches(json.data)
+        })
+        .catch(() => {})
+    }, 90 * 1000)
+
+    return () => clearInterval(interval)
+  }, [])
+
   function toggleGroup(group: string) {
     setOpenGroups(prev => ({ ...prev, [group]: !prev[group] }))
   }
@@ -58,21 +83,25 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
   // Group matches (só fase de grupos por enquanto)
   const grouped = useMemo(() => {
     const map: Record<string, Match[]> = {}
-    matches
-      .filter(m => m.phase === 'group')
+    allMatches
+      .filter(m => (m.phase || '').toLowerCase() === 'group')
       .forEach(m => {
         const key = `Grupo ${m.group_label}`
         if (!map[key]) map[key] = []
         map[key].push(m)
       })
     return map
-  }, [matches])
+  }, [allMatches])
+
+  const knockoutMatches = useMemo(() => {
+    return allMatches.filter(m => (m.phase || '').toLowerCase() !== 'group')
+  }, [allMatches])
 
   // Teams per group (for table betting)
   const groupTeams = useMemo(() => {
     const map: Record<string, GroupTeamInfo[]> = {}
-    matches
-      .filter(m => m.phase === 'group' && m.group_label)
+    allMatches
+      .filter(m => (m.phase || '').toLowerCase() === 'group' && m.group_label)
       .forEach(m => {
         const g = m.group_label!
         if (!map[g]) map[g] = []
@@ -85,10 +114,23 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
         addTeam(m.away_abbr, m.away_team, m.away_flag)
       })
     return map
-  }, [matches])
+  }, [allMatches])
 
   const sortedGroupLabels = useMemo(() =>
     Object.keys(groupTeams).sort(), [groupTeams])
+
+  const teamMetaByAbbr = useMemo(() => {
+    const map: Record<string, { name: string; flag: string }> = {}
+
+    Object.values(groupTeams).forEach(teams => {
+      teams.forEach(team => {
+        if (!team.abbr) return
+        map[team.abbr] = { name: team.name, flag: team.flag }
+      })
+    })
+
+    return map
+  }, [groupTeams])
 
   function copyCode() {
     navigator.clipboard.writeText(room.code).catch(() => {})
@@ -154,6 +196,37 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
     setGroupBets(prev => ({ ...prev, [groupLabel]: json.data }))
     toast.success('✅ Palpite de tabela confirmado!')
   }
+
+  async function handleSimulateNow() {
+    setSimulateLoading(true)
+    try {
+      const [matchesRes, betsRes, groupBetsRes] = await Promise.all([
+        fetch('/api/matches'),
+        fetch(`/api/bets?room_id=${room.id}`),
+        fetch(`/api/group-bets?room_id=${room.id}`),
+      ])
+
+      const [matchesJson, betsJson, groupBetsJson] = await Promise.all([
+        matchesRes.json(),
+        betsRes.json(),
+        groupBetsRes.json(),
+      ])
+
+      if (matchesJson.data) setAllMatches(matchesJson.data)
+      if (betsJson.data) {
+        setBets(Object.fromEntries((betsJson.data as Bet[]).map(b => [b.match_id, b])))
+      }
+      if (groupBetsJson.data) {
+        setGroupBets(Object.fromEntries((groupBetsJson.data as GroupBet[]).map(b => [b.group_label, b])))
+      }
+
+      toast.success('🔄 Simulação atualizada!')
+    } catch {
+      toast.error('Erro ao atualizar simulação')
+    } finally {
+      setSimulateLoading(false)
+    }
+  }
    // Log para depuração
   return (
     <>
@@ -167,7 +240,7 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
         />
       )}
 
-      <main className="min-h-screen bg-field bg-grid pt-16">
+      <main className="min-h-screen overflow-x-hidden bg-field bg-grid pt-16">
         <div className="max-w-7xl mx-auto px-4 py-8">
 
           {/* Room header */}
@@ -293,6 +366,12 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
                   ⚽ Jogos
                 </button>
                 <button
+                  onClick={() => setActiveTab('knockout')}
+                  className={`flex-1 py-2.5 text-sm font-bold transition-all ${activeTab === 'knockout' ? 'bg-green text-black' : 'text-white/40 hover:text-white'}`}
+                >
+                  🏁 Mata-mata
+                </button>
+                <button
                   onClick={() => setActiveTab('table')}
                   className={`flex-1 py-2.5 text-sm font-bold transition-all ${activeTab === 'table' ? 'bg-green text-black' : 'text-white/40 hover:text-white'}`}
                 >
@@ -344,6 +423,27 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
                       </div>
                     )
                   })}
+                </div>
+              )}
+
+              {/* Knockout tab */}
+              {activeTab === 'knockout' && (
+                <div className="space-y-4">
+                  <p className="text-xs text-muted">
+                    A chave é atualizada conforme os confrontos oficiais forem definidos ao longo da Copa.
+                    Os palpites desta fase ficam liberados a partir de 27/06.
+                  </p>
+                  <KnockoutBracket
+                    matches={knockoutMatches}
+                    bets={bets}
+                    groupBets={groupBets}
+                    teamMetaByAbbr={teamMetaByAbbr}
+                    onBet={handleBet}
+                    onSimulateNow={handleSimulateNow}
+                    simulateLoading={simulateLoading}
+                    isReleased={knockoutReleased}
+                    betStats={betStats}
+                  />
                 </div>
               )}
 

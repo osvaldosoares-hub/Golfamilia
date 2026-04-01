@@ -3,10 +3,10 @@ export interface ApiMatch {
   match_number: number
   round: string
   group_name: string | null
-  home_team: string
-  home_team_code: string
-  away_team: string
-  away_team_code: string
+  home_team: string | null
+  home_team_code: string | null
+  away_team: string | null
+  away_team_code: string | null
   kickoff_utc: string
   home_score: number | null
   away_score: number | null
@@ -48,16 +48,32 @@ function getFlag(code: string): string {
 }
 
 export function mapPhase(round: string): string {
+  const normalized = (round || '').trim().toLowerCase()
   const mapping: Record<string, string> = {
     group: 'group',
+    groups: 'group',
+    r32: 'r32',
     round_of_32: 'r32',
+    round32: 'r32',
+    'round of 32': 'r32',
+    r16: 'r16',
     round_of_16: 'r16',
+    round16: 'r16',
+    'round of 16': 'r16',
+    qf: 'qf',
     quarter_final: 'qf',
+    quarterfinal: 'qf',
+    'quarter-final': 'qf',
+    sf: 'sf',
     semi_final: 'sf',
+    semifinal: 'sf',
+    'semi-final': 'sf',
+    third: 'third',
     third_place: 'third',
+    'third place': 'third',
     final: 'final',
   }
-  return mapping[round] || round
+  return mapping[normalized] || normalized
 }
 
 export function mapStatus(status: string): string {
@@ -70,10 +86,10 @@ export function mapStatus(status: string): string {
   return mapping[status] || 'open'
 }
 
-function normalizeTeamAbbr(rawAbbr: string | null | undefined, teamName: string): string {
+function normalizeTeamAbbr(rawAbbr: string | null | undefined, teamName: string | null | undefined): string {
   if (rawAbbr && rawAbbr.trim().length > 0) return rawAbbr.trim().toUpperCase()
 
-  const lettersOnly = teamName.replace(/[^A-Za-z]/g, '').toUpperCase()
+  const lettersOnly = (teamName ?? '').replace(/[^A-Za-z]/g, '').toUpperCase()
   if (lettersOnly.length >= 3) return lettersOnly.slice(0, 3)
   if (lettersOnly.length > 0) return lettersOnly
   return 'UNK'
@@ -97,10 +113,10 @@ export function mapApiMatchToDbRow(match: ApiMatch) {
     match_code: buildMatchCode(match),
     phase: mapPhase(match.round),
     group_label: match.group_name || null,
-    home_team: match.home_team,
+    home_team: match.home_team ?? 'A definir',
     home_flag: getFlag(homeAbbr),
     home_abbr: homeAbbr,
-    away_team: match.away_team,
+    away_team: match.away_team ?? 'A definir',
     away_flag: getFlag(awayAbbr),
     away_abbr: awayAbbr,
     match_date: matchDate,

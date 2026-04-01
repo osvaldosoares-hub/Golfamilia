@@ -32,6 +32,46 @@ export function formatCoins(n: number): string {
   return n?.toLocaleString('pt-BR')
 }
 
+export const KNOCKOUT_RELEASE_DATE_NUMBER = 20260627
+
+function getDatePartsInSaoPaulo(date: Date) {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+
+  const parts = formatter.formatToParts(date)
+  const year = Number(parts.find(p => p.type === 'year')?.value || '0')
+  const month = Number(parts.find(p => p.type === 'month')?.value || '0')
+  const day = Number(parts.find(p => p.type === 'day')?.value || '0')
+
+  return { year, month, day }
+}
+
+export function getDateNumberInSaoPaulo(date: Date = new Date()): number {
+  const { year, month, day } = getDatePartsInSaoPaulo(date)
+  return year * 10000 + month * 100 + day
+}
+
+export function isKnockoutBetReleased(date: Date = new Date()): boolean {
+  return getDateNumberInSaoPaulo(date) >= KNOCKOUT_RELEASE_DATE_NUMBER
+}
+
+export function getPhaseLabel(phase: string): string {
+  const labels: Record<string, string> = {
+    r32: '16 avos',
+    r16: 'Oitavas',
+    qf: 'Quartas',
+    sf: 'Semifinal',
+    third: '3o lugar',
+    final: 'Final',
+  }
+
+  return labels[phase] || phase
+}
+
 const MONTH_MAP: Record<string, number> = {
   Jan: 0, Fev: 1, Mar: 2, Abr: 3, Mai: 4, Jun: 5,
   Jul: 6, Ago: 7, Set: 8, Out: 9, Nov: 10, Dez: 11,
