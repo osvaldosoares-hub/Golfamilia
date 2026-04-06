@@ -262,7 +262,7 @@ export default function MatchCard({ match, existingBet, onBet, betStats }: Props
                   />
                 )}
               </div>
-              {betStats.scores_count > 0 && betStats.avg_home != null && betStats.avg_away != null && (
+              {betStats.scores_count > 2 && betStats.avg_home != null && betStats.avg_away != null && (
                 <div className="mt-2 text-[11px] text-muted">
                   📈 Média de placar: <span className="text-white font-bold">{betStats.avg_home}</span>
                   <span className="mx-1">x</span>
