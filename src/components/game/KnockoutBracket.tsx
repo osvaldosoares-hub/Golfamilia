@@ -28,6 +28,7 @@ interface Props {
   simulateLoading: boolean
   betStats?: Record<string, BetStats>
   isReleased: boolean
+  bestThirdPlace?: Array<{ group: string; abbr: string }>
 }
 
 type SimulatedMatch = Match & {
@@ -179,10 +180,15 @@ function resolveTeamFromToken(
   token: string,
   groupBets: Record<string, GroupBet>,
   matchesByNumber: Map<number, Match>,
-  bets: Record<string, Bet>
+  bets: Record<string, Bet>,
+  thirdPlaceAssignment: Map<string, string>
 ): string | null {
   const thirdOptions = parseThirdOptionsSlot(token)
   if (thirdOptions) {
+    // Use pre-computed best third-place assignment
+    const assigned = thirdPlaceAssignment.get(token)
+    if (assigned) return assigned
+    // Fallback to user's group bets
     for (const group of thirdOptions) {
       const groupBet = groupBets[group]
       if (groupBet?.third_team) return groupBet.third_team
@@ -216,17 +222,18 @@ function resolveMatchForSimulation(
   groupBets: Record<string, GroupBet>,
   matchesByNumber: Map<number, Match>,
   bets: Record<string, Bet>,
-  teamMetaByAbbr: Record<string, { name: string; flag: string }>
+  teamMetaByAbbr: Record<string, { name: string; flag: string }>,
+  thirdPlaceAssignment: Map<string, string>
 ) : SimulatedMatch {
 
   const resolvedHomeAbbr = isPlaceholder(match.home_team, match.home_abbr)
-    ? resolveTeamFromToken(match.home_abbr, groupBets, matchesByNumber, bets)
-      || resolveTeamFromToken(match.home_team, groupBets, matchesByNumber, bets)
+    ? resolveTeamFromToken(match.home_abbr, groupBets, matchesByNumber, bets, thirdPlaceAssignment)
+      || resolveTeamFromToken(match.home_team, groupBets, matchesByNumber, bets, thirdPlaceAssignment)
     : match.home_abbr
 
   const resolvedAwayAbbr = isPlaceholder(match.away_team, match.away_abbr)
-    ? resolveTeamFromToken(match.away_abbr, groupBets, matchesByNumber, bets)
-      || resolveTeamFromToken(match.away_team, groupBets, matchesByNumber, bets)
+    ? resolveTeamFromToken(match.away_abbr, groupBets, matchesByNumber, bets, thirdPlaceAssignment)
+      || resolveTeamFromToken(match.away_team, groupBets, matchesByNumber, bets, thirdPlaceAssignment)
     : match.away_abbr
 
   const homeMeta = resolvedHomeAbbr ? teamMetaByAbbr[resolvedHomeAbbr] : undefined
@@ -243,7 +250,7 @@ function resolveMatchForSimulation(
   }
 }
 
-export default function KnockoutBracket({ matches, bets, groupBets, teamMetaByAbbr, onBet, onSimulateNow, simulateLoading, betStats, isReleased }: Props) {
+export default function KnockoutBracket({ matches, bets, groupBets, teamMetaByAbbr, onBet, onSimulateNow, simulateLoading, betStats, isReleased, bestThirdPlace }: Props) {
   const normalizedApiMatches = useMemo(() => {
     return matches.map(match => ({
       ...match,
@@ -299,11 +306,48 @@ export default function KnockoutBracket({ matches, bets, groupBets, teamMetaByAb
     return map
   }, [templateMergedMatches])
 
+  // Assign best third-place teams to R32 slots via greedy matching
+  const thirdPlaceAssignment = useMemo(() => {
+    const assignment = new Map<string, string>()
+    if (!bestThirdPlace || bestThirdPlace.length === 0) return assignment
+
+    const assignedGroups = new Set<string>()
+
+    const thirdPlaceSlots = KNOCKOUT_TEMPLATE
+      .filter(t => {
+        const awayParsed = parseThirdOptionsSlot(t.awaySlot)
+        const homeParsed = parseThirdOptionsSlot(t.homeSlot)
+        return awayParsed !== null || homeParsed !== null
+      })
+      .map(t => {
+        const awayParsed = parseThirdOptionsSlot(t.awaySlot)
+        return {
+          no: t.no,
+          slot: awayParsed ? t.awaySlot : t.homeSlot,
+          eligibleGroups: awayParsed || parseThirdOptionsSlot(t.homeSlot) || [],
+        }
+      })
+      .sort((a, b) => a.no - b.no)
+
+    for (const { slot, eligibleGroups } of thirdPlaceSlots) {
+      for (const tp of bestThirdPlace) {
+        if (assignedGroups.has(tp.group)) continue
+        if (!eligibleGroups.includes(tp.group)) continue
+
+        assignment.set(slot, tp.abbr)
+        assignedGroups.add(tp.group)
+        break
+      }
+    }
+
+    return assignment
+  }, [bestThirdPlace])
+
   const simulatedMatches = useMemo(() => {
     return templateMergedMatches.map(match =>
-      resolveMatchForSimulation(match, groupBets, matchesByNumber, bets, teamMetaByAbbr)
+      resolveMatchForSimulation(match, groupBets, matchesByNumber, bets, teamMetaByAbbr, thirdPlaceAssignment)
     )
-  }, [templateMergedMatches, groupBets, matchesByNumber, bets, teamMetaByAbbr])
+  }, [templateMergedMatches, groupBets, matchesByNumber, bets, teamMetaByAbbr, thirdPlaceAssignment])
 
   const rounds = useMemo(() => {
     const map: Record<string, SimulatedMatch[]> = {}

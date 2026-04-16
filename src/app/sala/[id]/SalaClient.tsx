@@ -178,6 +178,87 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
     return result
   }, [allMatches, sortedGroupLabels])
 
+  // Rank best third-place teams across all groups: pts > gd > gf
+  // Uses actual results when available, falls back to user's predicted scores (bets)
+  const bestThirdPlace = useMemo(() => {
+    const thirdPlaceTeams: Array<{ group: string; abbr: string; pts: number; gd: number; gf: number }> = []
+
+    sortedGroupLabels.forEach(label => {
+      const groupMatches = allMatches.filter(
+        m => (m.phase || '').toLowerCase() === 'group' && m.group_label === label
+      )
+      if (groupMatches.length === 0) return
+
+      const table = new Map<string, { pts: number; gd: number; gf: number }>()
+      const ensureTeam = (abbr: string) => {
+        if (!table.has(abbr)) table.set(abbr, { pts: 0, gd: 0, gf: 0 })
+        return table.get(abbr)!
+      }
+
+      let hasData = false
+      groupMatches.forEach(m => {
+        ensureTeam(m.home_abbr)
+        ensureTeam(m.away_abbr)
+
+        // Use actual score if available, otherwise use user's predicted score
+        let hScore: number | null = null
+        let aScore: number | null = null
+
+        if (m.home_score != null && m.away_score != null) {
+          hScore = m.home_score
+          aScore = m.away_score
+        } else {
+          const bet = bets[m.id]
+          if (bet && bet.predicted_home != null && bet.predicted_away != null) {
+            hScore = Number(bet.predicted_home)
+            aScore = Number(bet.predicted_away)
+          }
+        }
+
+        if (hScore == null || aScore == null) return
+        hasData = true
+        const home = table.get(m.home_abbr)!
+        const away = table.get(m.away_abbr)!
+        home.gf += hScore
+        away.gf += aScore
+        home.gd += hScore - aScore
+        away.gd += aScore - hScore
+        if (hScore > aScore) home.pts += 3
+        else if (aScore > hScore) away.pts += 3
+        else { home.pts += 1; away.pts += 1 }
+      })
+
+      if (!hasData) return
+
+      const ranked = Array.from(table.entries())
+        .sort((a, b) => {
+          if (b[1].pts !== a[1].pts) return b[1].pts - a[1].pts
+          if (b[1].gd !== a[1].gd) return b[1].gd - a[1].gd
+          if (b[1].gf !== a[1].gf) return b[1].gf - a[1].gf
+          return a[0].localeCompare(b[0])
+        })
+
+      if (ranked.length >= 3) {
+        thirdPlaceTeams.push({
+          group: label,
+          abbr: ranked[2][0],
+          pts: ranked[2][1].pts,
+          gd: ranked[2][1].gd,
+          gf: ranked[2][1].gf,
+        })
+      }
+    })
+
+    thirdPlaceTeams.sort((a, b) => {
+      if (b.pts !== a.pts) return b.pts - a.pts
+      if (b.gd !== a.gd) return b.gd - a.gd
+      if (b.gf !== a.gf) return b.gf - a.gf
+      return a.group.localeCompare(b.group)
+    })
+
+    return thirdPlaceTeams.slice(0, 8)
+  }, [allMatches, sortedGroupLabels, bets])
+
   const teamMetaByAbbr = useMemo(() => {
     const map: Record<string, { name: string; flag: string }> = {}
 
@@ -502,6 +583,7 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
                     simulateLoading={simulateLoading}
                     isReleased={knockoutReleased}
                     betStats={betStats}
+                    bestThirdPlace={bestThirdPlace}
                   />
                 </div>
               )}
