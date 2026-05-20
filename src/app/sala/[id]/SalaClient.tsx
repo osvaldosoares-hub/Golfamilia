@@ -127,11 +127,7 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
         (match) => (match.phase || '').toLowerCase() === 'group' && match.group_label === label
       )
 
-      const isFinished =
-        groupMatches.length > 0 &&
-        groupMatches.every((match) => match.home_score != null && match.away_score != null)
-
-      if (!isFinished) {
+      if (groupMatches.length === 0) {
         result[label] = undefined
         return
       }
@@ -144,12 +140,31 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
         return table.get(abbr)!
       }
 
-      groupMatches.forEach((match) => {
-        const home = ensureTeam(match.home_abbr)
-        const away = ensureTeam(match.away_abbr)
+      let hasData = false
 
-        const homeScore = Number(match.home_score)
-        const awayScore = Number(match.away_score)
+      groupMatches.forEach((match) => {
+        ensureTeam(match.home_abbr)
+        ensureTeam(match.away_abbr)
+
+        let homeScore: number | null = null
+        let awayScore: number | null = null
+
+        if (match.home_score != null && match.away_score != null) {
+          homeScore = Number(match.home_score)
+          awayScore = Number(match.away_score)
+        } else {
+          const bet = bets[match.id]
+          if (bet && bet.predicted_home != null && bet.predicted_away != null) {
+            homeScore = Number(bet.predicted_home)
+            awayScore = Number(bet.predicted_away)
+          }
+        }
+
+        if (homeScore == null || awayScore == null) return
+        hasData = true
+
+        const home = table.get(match.home_abbr)!
+        const away = table.get(match.away_abbr)!
 
         home.gf += homeScore
         away.gf += awayScore
@@ -164,6 +179,11 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
         }
       })
 
+      if (!hasData) {
+        result[label] = undefined
+        return
+      }
+
       result[label] = Array.from(table.entries())
         .sort((a, b) => {
           if (b[1].pts !== a[1].pts) return b[1].pts - a[1].pts
@@ -176,7 +196,7 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
     })
 
     return result
-  }, [allMatches, sortedGroupLabels])
+  }, [allMatches, sortedGroupLabels, bets])
 
   // Rank best third-place teams across all groups: pts > gd > gf
   // Uses actual results when available, falls back to user's predicted scores (bets)

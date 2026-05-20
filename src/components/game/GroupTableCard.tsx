@@ -20,6 +20,7 @@ export default function GroupTableCard({ groupLabel, teams, existingBet, actualT
 
   const hasBet = !!existingBet && !editing
   const canSubmit = first && second && third && first !== second && first !== third && second !== third
+  const canAutoCalculate = !!actualTop3 && actualTop3.length >= 3
 
   function availableFor(position: 'first' | 'second' | 'third') {
     const selected = { first, second, third }
@@ -43,6 +44,13 @@ export default function GroupTableCard({ groupLabel, teams, existingBet, actualT
 
   function getTeam(abbr: string) {
     return teams.find((team) => team.abbr === abbr)
+  }
+
+  function handleAutoCalculate() {
+    if (!canAutoCalculate) return
+    setFirst(actualTop3![0] || '')
+    setSecond(actualTop3![1] || '')
+    setThird(actualTop3![2] || '')
   }
 
   function renderPositionRow(pos: string, abbr: string | undefined, color: string, key: string) {
@@ -169,13 +177,30 @@ export default function GroupTableCard({ groupLabel, teams, existingBet, actualT
           <div>🏆 Acertou as 3 posições = <span className="text-gold font-bold">10 pts</span></div>
         </div>
 
-        <button
-          onClick={handleSubmit}
-          disabled={!canSubmit || loading}
-          className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-30 bg-green/20 border border-green/40 text-green hover:bg-green/30 disabled:hover:bg-green/20"
-        >
-          {loading ? '⏳ Salvando...' : '✅ Confirmar palpite'}
-        </button>
+        <div className="grid grid-cols-1 gap-2">
+          <button
+            onClick={handleAutoCalculate}
+            disabled={!canAutoCalculate || loading}
+            className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-30 bg-blue/20 border border-blue/40 text-blue hover:bg-blue/30 disabled:hover:bg-blue/20"
+          >
+            🧮 Calcular minha aposta
+          </button>
+
+          {!canAutoCalculate && (
+            <p className="text-[10px] text-muted text-center px-2">
+              Ainda não há dados suficientes para calcular automaticamente.
+              Você pode escolher sua aposta manualmente.
+            </p>
+          )}
+
+          <button
+            onClick={handleSubmit}
+            disabled={!canSubmit || loading}
+            className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-30 bg-green/20 border border-green/40 text-green hover:bg-green/30 disabled:hover:bg-green/20"
+          >
+            {loading ? '⏳ Salvando...' : '✅ Confirmar palpite'}
+          </button>
+        </div>
       </div>
     </div>
   )
