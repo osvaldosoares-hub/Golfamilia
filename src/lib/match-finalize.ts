@@ -1,5 +1,35 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+// Sala que tem 2x habilitado
+const DOUBLE_POINTS_ROOM_CODES = ['FY4CXF']
+
+// Lista de jogos que valem 2x pontos
+// Formato: "HOME_ABBR-AWAY_ABBR" (qualquer ordem)
+const DOUBLE_POINTS_MATCHES = [
+ 'COD-UZB', // RDC Democrática do Congo x Uzbequistão
+  'UZB-COD', // Uzbequistão x RDC Democrática do Congo
+  'CPV-KSA',
+  'KSA-CPV',
+  'IRN-NZL',
+  'NZL-IRN',
+  'AUT-JOR',
+  'JOR-AUT',
+  'JOR-ALG',
+  'ALG-JOR',
+  'BIH-QAT',
+  'QAT-BIH',
+  'USA-AUS',
+  'AUS-USA',
+]
+
+function isDoublePointsMatch(homeAbbr: string, awayAbbr: string, roomCode: string): boolean {
+  // Só aplica 2x se a sala for a sala especial
+  if (!DOUBLE_POINTS_ROOM_CODES.includes(roomCode)) return false
+  
+  const code = `${homeAbbr}-${awayAbbr}`
+  return DOUBLE_POINTS_MATCHES.includes(code)
+}
+
 interface MatchRow {
   id: string
   status: string
@@ -19,6 +49,7 @@ interface BetRow {
 
 interface RoomPointsRow {
   id: string
+  code: string
   pts_exact: number
   pts_winner: number
 }
@@ -199,9 +230,9 @@ export async function finalizeMatchAndScore(
   const betsList = bets || []
 
   const roomIds = Array.from(new Set(betsList.map((bet) => bet.room_id)))
-  const { data: rooms } = await db
+const { data: rooms } = await db
     .from('rooms')
-    .select('id, pts_exact, pts_winner')
+    .select('id, code, pts_exact, pts_winner')
     .in('id', roomIds)
     .returns<RoomPointsRow[]>()
 
@@ -228,11 +259,16 @@ export async function finalizeMatchAndScore(
 
     const winnerPick = bet.predicted_qualifier ?? winnerFromScore
 
-    let points = 0
+let points = 0
     if (predictedHome === realHome && predictedAway === realAway) {
       points = room.pts_exact + room.pts_winner
     } else if (winnerPick === realQualifier) {
       points = room.pts_winner
+    }
+
+// Aplicar multiplicador 2x para jogos especiais
+    if (isDoublePointsMatch(match.home_abbr, match.away_abbr, room.code)) {
+      points = points * 2
     }
 
     await db

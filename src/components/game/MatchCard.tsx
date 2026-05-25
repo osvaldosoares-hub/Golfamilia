@@ -23,9 +23,10 @@ interface Props {
   existingBet?: Bet
   onBet: (data: BetData) => Promise<void>
   betStats?: BetStats
+  isDoublePoints?: boolean
 }
 
-export default function MatchCard({ match, existingBet, onBet, betStats }: Props) {
+export default function MatchCard({ match, existingBet, onBet, betStats, isDoublePoints }: Props) {
   const [scoreH, setScoreH] = useState<string>(existingBet ? String(existingBet.predicted_home) : '')
   const [scoreA, setScoreA] = useState<string>(existingBet ? String(existingBet.predicted_away) : '')
   const [qualifier, setQualifier] = useState<string>(existingBet?.predicted_qualifier || '')
@@ -124,7 +125,18 @@ export default function MatchCard({ match, existingBet, onBet, betStats }: Props
           <span className="text-xs text-muted font-mono">
             ⚽ Grupo {match.group_label} · {match.match_date} {match.match_time}
           </span>
-          <div className="flex items-center gap-1.5">
+<div className="flex items-center gap-1.5">
+{/* 2x Badge with Fire Animation */}
+            {isDoublePoints && !locked && (
+              <div className="relative">
+                <div className="absolute -inset-1 bg-gradient-to-r from-orange-500 to-red-600 rounded-lg blur opacity-40 animate-pulse" />
+                <div className="relative flex items-center gap-1.5 text-sm font-black px-3 py-1.5 rounded-lg bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/30 animate-bounce">
+                  <span className="animate-pulse">🔥</span>
+                  <span className="tracking-wider">2X</span>
+                  <span className="animate-pulse">🔥</span>
+                </div>
+              </div>
+            )}
             {countdownLabel && !locked && (
               <div className="text-xs font-bold px-2.5 py-1 rounded-full bg-gold/10 text-gold animate-pulse">
                 {countdownLabel}

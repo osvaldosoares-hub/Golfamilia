@@ -11,6 +11,36 @@ import KnockoutBracket from '@/components/game/KnockoutBracket'
 import type { User, Room, Match, Bet, LeaderboardEntry, GroupBet, GroupTeamInfo } from '@/types'
 import { formatCoins, getAvatarColor, getAvatarTextColor, isKnockoutBetReleased } from '@/lib/utils'
 
+// Lista de jogos que valem 2x pontos
+// Formato: "HOME_ABBR-AWAY_ABBR" (qualquer ordem)
+const DOUBLE_POINTS_MATCHES = [
+  'COD-UZB', // RDC Democrática do Congo x Uzbequistão
+  'UZB-COD', // Uzbequistão x RDC Democrática do Congo
+  'CPV-KSA',
+  'KSA-CPV',
+  'IRN-NZL',
+  'NZL-IRN',
+  'AUT-JOR',
+  'JOR-AUT',
+  'JOR-ALG',
+  'ALG-JOR',
+  'BIH-QAT',
+  'QAT-BIH',
+  'USA-AUS',
+  'AUS-USA',
+]
+
+// Sala que tem 2x habilitado
+const DOUBLE_POINTS_ROOM_CODES = ['FY4CXF']
+
+function isDoublePointsMatch(match: Match, roomCode: string): boolean {
+  // Só aplica 2x se a sala for a sala especial
+  if (!DOUBLE_POINTS_ROOM_CODES.includes(roomCode)) return false
+  
+  const code = `${match.home_abbr}-${match.away_abbr}`
+  return DOUBLE_POINTS_MATCHES.includes(code)
+}
+
 interface Props {
   user: User
   room: Room
@@ -569,13 +599,14 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
                         </button>
                         {isOpen && (
                           <div className="space-y-3 animate-fade-up">
-                            {groupMatches.map(match => (
+{groupMatches.map(match => (
                               <MatchCard
                                 key={match.id}
                                 match={match}
                                 existingBet={bets[match.id]}
                                 onBet={(data) => handleBet(match.id, data)}
                                 betStats={betStats[match.id]}
+isDoublePoints={isDoublePointsMatch(match, room.code)}
                               />
                             ))}
                           </div>
