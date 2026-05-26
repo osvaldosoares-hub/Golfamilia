@@ -68,6 +68,7 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
   const [simulateLoading, setSimulateLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'matches' | 'knockout' | 'table'>('matches')
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+  const [groupRoundIndex, setGroupRoundIndex] = useState<Record<string, number>>({})
   const [knockoutReleased, setKnockoutReleased] = useState(() => isKnockoutBetReleased())
   const [betStats, setBetStats] = useState<Record<string, {
     total: number
@@ -110,6 +111,22 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
     setOpenGroups(prev => ({ ...prev, [group]: !prev[group] }))
   }
 
+  function goToPrevRound(group: string, totalRounds: number) {
+    setGroupRoundIndex(prev => {
+      const current = prev[group] ?? 0
+      const next = current <= 0 ? totalRounds - 1 : current - 1
+      return { ...prev, [group]: next }
+    })
+  }
+
+  function goToNextRound(group: string, totalRounds: number) {
+    setGroupRoundIndex(prev => {
+      const current = prev[group] ?? 0
+      const next = current >= totalRounds - 1 ? 0 : current + 1
+      return { ...prev, [group]: next }
+    })
+  }
+
   // Group matches (só fase de grupos por enquanto)
   const grouped = useMemo(() => {
     const map: Record<string, Match[]> = {}
@@ -126,6 +143,64 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
   const knockoutMatches = useMemo(() => {
     return allMatches.filter(m => (m.phase || '').toLowerCase() !== 'group')
   }, [allMatches])
+
+// Helper function to get head-to-head stats between two teams
+  function getHeadToHeadStats(team1: string, team2: string, matches: Match[], bets: Record<string, Bet>) {
+    const h2hMatches = matches.filter(m => 
+      (m.home_abbr === team1 && m.away_abbr === team2) ||
+      (m.home_abbr === team2 && m.away_abbr === team1)
+    )
+    
+    if (h2hMatches.length === 0) return null
+    
+    let team1Pts = 0
+    let team2Pts = 0
+    let team1Gd = 0
+    let team2Gd = 0
+    let team1Gf = 0
+    let team2Gf = 0
+    
+    h2hMatches.forEach(match => {
+      let homeScore: number | null = null
+      let awayScore: number | null = null
+      
+      if (match.home_score != null && match.away_score != null) {
+        homeScore = Number(match.home_score)
+        awayScore = Number(match.away_score)
+      } else {
+        const bet = bets[match.id]
+        if (bet && bet.predicted_home != null && bet.predicted_away != null) {
+          homeScore = Number(bet.predicted_home)
+          awayScore = Number(bet.predicted_away)
+        }
+      }
+      
+      if (homeScore == null || awayScore == null) return
+      
+      const homeAbbr = match.home_abbr
+      const awayAbbr = match.away_abbr
+      
+      if (homeAbbr === team1) {
+        team1Gf += homeScore
+        team2Gf += awayScore
+        team1Gd += homeScore - awayScore
+        team2Gd += awayScore - homeScore
+        if (homeScore > awayScore) team1Pts += 3
+        else if (awayScore > homeScore) team2Pts += 1
+        else { team1Pts += 1; team2Pts += 1 }
+      } else {
+        team2Gf += homeScore
+        team1Gf += awayScore
+        team2Gd += homeScore - awayScore
+        team1Gd += awayScore - homeScore
+        if (homeScore > awayScore) team2Pts += 3
+        else if (awayScore > homeScore) team1Pts += 1
+        else { team1Pts += 1; team2Pts += 1 }
+      }
+    })
+    
+    return { team1Pts, team2Pts, team1Gd, team2Gd, team1Gf, team2Gf }
+  }
 
   // Teams per group (for table betting)
   const groupTeams = useMemo(() => {
@@ -146,7 +221,7 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
     return map
   }, [allMatches])
 
-  const sortedGroupLabels = useMemo(() =>
+    const sortedGroupLabels = useMemo(() =>
     Object.keys(groupTeams).sort(), [groupTeams])
 
   const groupTop3ByLabel = useMemo(() => {
@@ -309,6 +384,98 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
     return thirdPlaceTeams.slice(0, 8)
   }, [allMatches, sortedGroupLabels, bets])
 
+  const groupTableRowsByLabel = useMemo(() => {
+    const result: Record<string, Array<{ abbr: string; pts: number; gd: number; gf: number; played: number; wins: number; draws: number; losses: number }>> = {}
+
+    sortedGroupLabels.forEach((label) => {
+      const groupMatches = allMatches.filter(
+        (match) => (match.phase || '').toLowerCase() === 'group' && match.group_label === label
+      )
+
+      const table = new Map<string, { pts: number; gd: number; gf: number; played: number; wins: number; draws: number; losses: number }>()
+      const ensureTeam = (abbr: string) => {
+        if (!table.has(abbr)) {
+          table.set(abbr, { pts: 0, gd: 0, gf: 0, played: 0, wins: 0, draws: 0, losses: 0 })
+        }
+        return table.get(abbr)!
+      }
+
+      groupMatches.forEach((match) => {
+        const home = ensureTeam(match.home_abbr)
+        const away = ensureTeam(match.away_abbr)
+
+        let homeScore: number | null = null
+        let awayScore: number | null = null
+
+        if (match.home_score != null && match.away_score != null) {
+          homeScore = Number(match.home_score)
+          awayScore = Number(match.away_score)
+        } else {
+          const bet = bets[match.id]
+          if (bet && bet.predicted_home != null && bet.predicted_away != null) {
+            homeScore = Number(bet.predicted_home)
+            awayScore = Number(bet.predicted_away)
+          }
+        }
+
+        if (homeScore == null || awayScore == null) return
+
+        home.played += 1
+        away.played += 1
+        home.gf += homeScore
+        away.gf += awayScore
+        home.gd += homeScore - awayScore
+        away.gd += awayScore - homeScore
+
+        if (homeScore > awayScore) {
+          home.pts += 3
+          home.wins += 1
+          away.losses += 1
+        } else if (awayScore > homeScore) {
+          away.pts += 3
+          away.wins += 1
+          home.losses += 1
+        } else {
+          home.pts += 1
+          away.pts += 1
+          home.draws += 1
+          away.draws += 1
+        }
+      })
+
+result[label] = Array.from(table.entries())
+        .map(([abbr, data]) => ({ abbr, ...data }))
+        .sort((a, b) => {
+          const teamA = a.abbr, teamB = b.abbr
+          
+          // 1. Points
+          if (b.pts !== a.pts) return b.pts - a.pts
+          
+          // 2. Goal difference
+          if (b.gd !== a.gd) return b.gd - a.gd
+          
+          // 3. Goals scored
+          if (b.gf !== a.gf) return b.gf - a.gf
+          
+          // 4-6. Head-to-head criteria (only if they played against each other)
+          const h2h = getHeadToHeadStats(teamA, teamB, groupMatches, bets)
+          if (h2h) {
+            // Head-to-head points
+            if (h2h.team2Pts !== h2h.team1Pts) return h2h.team2Pts - h2h.team1Pts
+            // Head-to-head goal difference
+            if (h2h.team2Gd !== h2h.team1Gd) return h2h.team2Gd - h2h.team1Gd
+            // Head-to-head goals scored
+            if (h2h.team2Gf !== h2h.team1Gf) return h2h.team2Gf - h2h.team1Gf
+          }
+          
+          // Final tiebreaker: alphabetical
+          return teamA.localeCompare(teamB)
+        })
+    })
+
+    return result
+  }, [allMatches, sortedGroupLabels, bets])
+
   const teamMetaByAbbr = useMemo(() => {
     const map: Record<string, { name: string; flag: string }> = {}
 
@@ -353,7 +520,7 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
     }
   }
 
-  async function handleBet(matchId: string, data: {
+async function handleBet(matchId: string, data: {
     predicted_home: number
     predicted_away: number
     predicted_qualifier?: string
@@ -366,7 +533,16 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
     const json = await res.json()
     if (!res.ok) { toast.error(json.error || 'Erro ao salvar palpite'); return }
 
+    // Atualiza bets imediatamente para a tabela atualizar em tempo real
     setBets(prev => ({ ...prev, [matchId]: json.data }))
+    
+    // Marca o grupo como aberto para mostrar a tabela atualizada
+    const match = allMatches.find(m => m.id === matchId)
+    if (match?.group_label) {
+      const groupKey = `Grupo ${match.group_label}`
+      setOpenGroups(prev => ({ ...prev, [groupKey]: true }))
+    }
+    
     toast.success('✅ Palpite confirmado!')
   }
 
@@ -577,6 +753,15 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
                     const betCount = groupMatches.filter(m => bets[m.id]).length
                     const label = groupMatches[0]?.group_label
                     const teams = label ? groupTeams[label] || [] : []
+                    const rounds: Match[][] = []
+                    for (let i = 0; i < groupMatches.length; i += 2) {
+                      rounds.push(groupMatches.slice(i, i + 2))
+                    }
+                    const totalRounds = rounds.length || 1
+                    const currentRound = Math.min(groupRoundIndex[group] ?? 0, totalRounds - 1)
+                    const currentRoundMatches = rounds[currentRound] || []
+                    const tableRows = label ? (groupTableRowsByLabel[label] || []) : []
+
                     return (
                       <div key={group}>
                         <button
@@ -597,18 +782,84 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
                             ▼
                           </span>
                         </button>
-                        {isOpen && (
-                          <div className="space-y-3 animate-fade-up">
-{groupMatches.map(match => (
-                              <MatchCard
-                                key={match.id}
-                                match={match}
-                                existingBet={bets[match.id]}
-                                onBet={(data) => handleBet(match.id, data)}
-                                betStats={betStats[match.id]}
-isDoublePoints={isDoublePointsMatch(match, room.code)}
-                              />
-                            ))}
+
+{isOpen && (
+                          <div className="space-y-4 animate-fade-up">
+                            {/* Tabela em linha (horizontal) */}
+                            <div className="card overflow-hidden">
+                              <div className="h-[2px] bg-white/[0.06]" />
+                              <div className="p-3 overflow-x-auto">
+                                <div className="grid grid-cols-[40px_1fr_repeat(7,40px)] gap-1 text-[10px] font-bold text-muted mb-2 px-1 min-w-max">
+                                  <span>#</span>
+                                  <span>Seleção</span>
+                                  <span className="text-center">P</span>
+                                  <span className="text-center">J</span>
+                                  <span className="text-center">V</span>
+                                  <span className="text-center">E</span>
+                                  <span className="text-center">D</span>
+                                  <span className="text-center">SG</span>
+                                  <span className="text-center">GF</span>
+                                </div>
+
+                                <div className=" gap-2 min-w-max ">
+                                  {tableRows.map((row, idx) => {
+                                    const teamMeta = teamMetaByAbbr[row.abbr]
+                                    return (
+                                      <div key={row.abbr} className="grid grid-cols-[40px_1fr_repeat(7,40px)] gap-1 items-center px-2 py-2 rounded-lg bg-white/[0.02] min-w-[320px]">
+                                        <span className="text-sm font-bold">{idx + 1}º</span>
+                                        <span>{teamMeta?.flag} {teamMeta?.name}</span>
+                                        <span className="text-center text-sm">{row?.pts ?? 0}</span>
+                                        <span className="text-center text-sm">{row?.played ?? 0}</span>
+                                        <span className="text-center text-sm">{row?.wins ?? 0}</span>
+                                        <span className="text-center text-sm">{row?.draws ?? 0}</span>
+                                        <span className="text-center text-sm">{row?.losses ?? 0}</span>
+                                        <span className="text-center text-sm">{row?.gd ?? 0}</span>
+                                        <span className="text-center text-sm">{row?.gf ?? 0}</span>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Navegação por rodada + jogos embaixo */}
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+                                <button
+                                  type="button"
+                                  onClick={() => goToPrevRound(group, totalRounds)}
+                                  className="text-2xl text-muted hover:text-white transition-colors px-2"
+                                  aria-label={`Rodada anterior ${group}`}
+                                >
+                                  ‹
+                                </button>
+                                <div className="text-center">
+                                  <p className="text-sm font-bold"> {currentRound + 1}ª Rodada</p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => goToNextRound(group, totalRounds)}
+                                  className="text-2xl text-green hover:text-green/80 transition-colors px-2"
+                                  aria-label={`Próxima rodada ${group}`}
+                                >
+                                  ›
+                                </button>
+                              </div>
+
+                              {/* Placares */}
+                              <div className="space-y-3">
+                                {currentRoundMatches.map(match => (
+                                  <MatchCard
+                                    key={match.id}
+                                    match={match}
+                                    existingBet={bets[match.id]}
+                                    onBet={(data) => handleBet(match.id, data)}
+                                    betStats={betStats[match.id]}
+                                    isDoublePoints={isDoublePointsMatch(match, room.code)}
+                                  />
+                                ))}
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
