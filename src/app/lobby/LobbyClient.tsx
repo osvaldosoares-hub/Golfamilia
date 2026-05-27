@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Navbar from '@/components/ui/Navbar'
 import AddCoinsModal from '@/components/ui/AddCoinsModal'
+import CountdownTimer from '@/components/ui/CountdownTimer'
 import type { User, Room } from '@/types'
 import { formatCoins } from '@/lib/utils'
 
@@ -122,12 +123,17 @@ export default function LobbyClient({ user, initialRooms }: Props) {
       <main className="min-h-screen bg-field bg-grid pt-16">
         <div className="max-w-5xl mx-auto px-4 py-10">
 
-          {/* Header */}
+{/* Header */}
           <div className="mb-10 animate-fade-up">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-4xl">🏆</span>
+              <span className="text-sm font-bold text-gold tracking-widest uppercase">Copa 2026</span>
+            </div>
             <h1 className="text-5xl font-black tracking-widest uppercase text-white">
               Olá, <span className="text-green">{currentUser?.nickname}</span>! 👋
             </h1>
             <p className="text-muted mt-2">Crie ou entre em uma sala para apostar na Copa</p>
+            <CountdownTimer />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
