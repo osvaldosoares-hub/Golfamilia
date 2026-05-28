@@ -202,13 +202,14 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
     return { team1Pts, team2Pts, team1Gd, team2Gd, team1Gf, team2Gf }
   }
 
-  // Teams per group (for table betting)
+// Teams per group (for table betting)
+  // Normaliza keys para maiúsculas para garantir ordenação alfabética correta
   const groupTeams = useMemo(() => {
     const map: Record<string, GroupTeamInfo[]> = {}
     allMatches
       .filter(m => (m.phase || '').toLowerCase() === 'group' && m.group_label)
       .forEach(m => {
-        const g = m.group_label!
+        const g = (m.group_label || '').toUpperCase()
         if (!map[g]) map[g] = []
         const addTeam = (abbr: string, name: string, flag: string) => {
           if (abbr && !map[g].find(t => t.abbr === abbr)) {
@@ -221,15 +222,17 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
     return map
   }, [allMatches])
 
-    const sortedGroupLabels = useMemo(() =>
-    Object.keys(groupTeams).sort(), [groupTeams])
+// Ordena grupos alfabeticamente (A, B, C, D, ...)
+  const sortedGroupLabels = useMemo(() =>
+    Object.keys(groupTeams).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })), [groupTeams])
 
   const groupTop3ByLabel = useMemo(() => {
     const result: Record<string, string[] | undefined> = {}
 
     sortedGroupLabels.forEach((label) => {
+      const groupLabelUpper = label.toUpperCase()
       const groupMatches = allMatches.filter(
-        (match) => (match.phase || '').toLowerCase() === 'group' && match.group_label === label
+        (match) => (match.phase || '').toLowerCase() === 'group' && (match.group_label || '').toUpperCase() === groupLabelUpper
       )
 
       if (groupMatches.length === 0) {
@@ -303,14 +306,15 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
     return result
   }, [allMatches, sortedGroupLabels, bets])
 
-  // Rank best third-place teams across all groups: pts > gd > gf
+// Rank best third-place teams across all groups: pts > gd > gf
   // Uses actual results when available, falls back to user's predicted scores (bets)
   const bestThirdPlace = useMemo(() => {
     const thirdPlaceTeams: Array<{ group: string; abbr: string; pts: number; gd: number; gf: number }> = []
 
     sortedGroupLabels.forEach(label => {
+      const groupLabelUpper = label.toUpperCase()
       const groupMatches = allMatches.filter(
-        m => (m.phase || '').toLowerCase() === 'group' && m.group_label === label
+        m => (m.phase || '').toLowerCase() === 'group' && (m.group_label || '').toUpperCase() === groupLabelUpper
       )
       if (groupMatches.length === 0) return
 
@@ -382,14 +386,15 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
     })
 
     return thirdPlaceTeams.slice(0, 8)
-  }, [allMatches, sortedGroupLabels, bets])
+}, [allMatches, sortedGroupLabels, bets])
 
   const groupTableRowsByLabel = useMemo(() => {
     const result: Record<string, Array<{ abbr: string; pts: number; gd: number; gf: number; played: number; wins: number; draws: number; losses: number }>> = {}
 
     sortedGroupLabels.forEach((label) => {
+      const groupLabelUpper = label.toUpperCase()
       const groupMatches = allMatches.filter(
-        (match) => (match.phase || '').toLowerCase() === 'group' && match.group_label === label
+        (match) => (match.phase || '').toLowerCase() === 'group' && (match.group_label || '').toUpperCase() === groupLabelUpper
       )
 
       const table = new Map<string, { pts: number; gd: number; gf: number; played: number; wins: number; draws: number; losses: number }>()
@@ -745,14 +750,15 @@ async function handleBet(matchId: string, data: {
                 </button>
               </div>
 
-              {/* Matches tab */}
+{/* Matches tab */}
               {activeTab === 'matches' && (
                 <div className="space-y-8">
-                  {Object.entries(grouped).map(([group, groupMatches]) => {
+                  {sortedGroupLabels.map((label) => {
+                    const group = `Grupo ${label}`
+                    const groupMatches = grouped[group] || []
                     const isOpen = openGroups[group] ?? false
                     const betCount = groupMatches.filter(m => bets[m.id]).length
-                    const label = groupMatches[0]?.group_label
-                    const teams = label ? groupTeams[label] || [] : []
+                    const teams = groupTeams[label] || []
                     const rounds: Match[][] = []
                     for (let i = 0; i < groupMatches.length; i += 2) {
                       rounds.push(groupMatches.slice(i, i + 2))
@@ -760,7 +766,7 @@ async function handleBet(matchId: string, data: {
                     const totalRounds = rounds.length || 1
                     const currentRound = Math.min(groupRoundIndex[group] ?? 0, totalRounds - 1)
                     const currentRoundMatches = rounds[currentRound] || []
-                    const tableRows = label ? (groupTableRowsByLabel[label] || []) : []
+                    const tableRows = groupTableRowsByLabel[label] || []
 
                     return (
                       <div key={group}>
