@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const db = supabaseAdmin()
   try {
     const result = await finalizeMatchAndScore(db, match_id, home_score, away_score)
-
+    
     if (result.betsProcessed === 0) {
       return NextResponse.json({ data: { message: 'Jogo finalizado, sem apostas.' } })
     }

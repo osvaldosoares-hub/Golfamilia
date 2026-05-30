@@ -85,10 +85,12 @@ interface GroupBetPointsRow {
 }
 
 function groupTablePointsFromSequence(isFirstCorrect: boolean, isSecondCorrect: boolean, isThirdCorrect: boolean): number {
-  if (!isFirstCorrect) return 0
-  if (!isSecondCorrect) return 2
-  if (!isThirdCorrect) return 4
-  return 10
+  const correctCount = [isFirstCorrect, isSecondCorrect, isThirdCorrect].filter(Boolean).length
+
+  if (correctCount === 1) return 2
+  if (correctCount === 2) return 4
+  if (correctCount === 3) return 10
+  return 0
 }
 
 function qualifierFromScore(homeScore: number, awayScore: number, homeAbbr: string, awayAbbr: string): string {

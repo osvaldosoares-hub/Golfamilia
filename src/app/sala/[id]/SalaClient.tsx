@@ -651,9 +651,9 @@ async function handleBet(matchId: string, data: {
                   {[
                     { label: 'Placar exato', pts: room.pts_exact, icon: '🎯' },
                     { label: 'Vencedor certo', pts: room.pts_winner, icon: '✅' },
-                    { label: 'Tabela — 1 posição', pts: 2, icon: '📊' },
-                    { label: 'Tabela — 2 posições', pts: 4, icon: '📊' },
-                    { label: 'Tabela — 3 posições', pts: 10, icon: '🏆' },
+                    { label: 'Tabela — 1 posição ', pts: 2, icon: '📊' },
+                    { label: 'Tabela — 2 posições ', pts: 4, icon: '📊' },
+                    { label: 'Tabela — 3 posições ', pts: 10, icon: '🏆' },
                   ].map(r => (
                     <div key={r.label} className="flex justify-between items-center text-sm">
                       <span className="text-muted">{r.icon} {r.label}</span>
