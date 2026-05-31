@@ -1,6 +1,6 @@
 'use client'
 // src/app/sala/[id]/SalaClient.tsx
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Navbar from '@/components/ui/Navbar'
@@ -77,6 +77,13 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
     avg_away: number | null
     scores_count: number
   }>>({})
+  const [previousPositions, setPreviousPositions] = useState<Record<string, number>>({})
+  const [hasLeaderboardHistory, setHasLeaderboardHistory] = useState(false)
+  const [previousGroupTablePositions, setPreviousGroupTablePositions] = useState<Record<string, Record<string, number>>>({})
+  const [hasGroupTableHistory, setHasGroupTableHistory] = useState(false)
+  const leaderboardSnapshotRef = useRef<Record<string, number>>({})
+  const groupTableSnapshotRef = useRef<Record<string, Record<string, number>>>({})
+  const snapshotUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Fetch bet stats for the room
   useEffect(() => {
@@ -106,6 +113,27 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
 
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    const currentPositions: Record<string, number> = {}
+    leaderboard.forEach((entry, index) => {
+      currentPositions[entry.user_id] = index
+    })
+
+    if (Object.keys(leaderboardSnapshotRef.current).length === 0) {
+      leaderboardSnapshotRef.current = currentPositions
+      setPreviousPositions(currentPositions)
+      return
+    }
+
+    setHasLeaderboardHistory(true)
+    setPreviousPositions(leaderboardSnapshotRef.current)
+
+    if (snapshotUpdateTimeoutRef.current) clearTimeout(snapshotUpdateTimeoutRef.current)
+    snapshotUpdateTimeoutRef.current = setTimeout(() => {
+      leaderboardSnapshotRef.current = currentPositions
+    }, 1500)
+  }, [leaderboard])
 
   function toggleGroup(group: string) {
     setOpenGroups(prev => ({ ...prev, [group]: !prev[group] }))
@@ -481,6 +509,33 @@ result[label] = Array.from(table.entries())
     return result
   }, [allMatches, sortedGroupLabels, bets])
 
+  useEffect(() => {
+    const currentGroupPositions: Record<string, Record<string, number>> = {}
+
+    sortedGroupLabels.forEach((label) => {
+      const rows = groupTableRowsByLabel[label] || []
+      const positions: Record<string, number> = {}
+      rows.forEach((row, index) => {
+        positions[row.abbr] = index
+      })
+      currentGroupPositions[label] = positions
+    })
+
+    if (Object.keys(groupTableSnapshotRef.current).length === 0) {
+      groupTableSnapshotRef.current = currentGroupPositions
+      setPreviousGroupTablePositions(currentGroupPositions)
+      return
+    }
+
+    setHasGroupTableHistory(true)
+    setPreviousGroupTablePositions(groupTableSnapshotRef.current)
+
+    if (snapshotUpdateTimeoutRef.current) clearTimeout(snapshotUpdateTimeoutRef.current)
+    snapshotUpdateTimeoutRef.current = setTimeout(() => {
+      groupTableSnapshotRef.current = currentGroupPositions
+    }, 1500)
+  }, [groupTableRowsByLabel, sortedGroupLabels])
+
   const teamMetaByAbbr = useMemo(() => {
     const map: Record<string, { name: string; flag: string }> = {}
 
@@ -703,6 +758,19 @@ async function handleBet(matchId: string, data: {
                 <div className="space-y-1">
                   {leaderboard.map((entry, i) => {
                     const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`
+                    const prevPosition = previousPositions[entry.user_id]
+                    let movementIndicator: { icon: string; className: string; title: string } | null = null
+
+                    if (hasLeaderboardHistory && prevPosition != null) {
+                      if (i < prevPosition) {
+                        movementIndicator = { icon: '⬆️', className: 'text-green', title: 'Subiu no ranking' }
+                      } else if (i > prevPosition) {
+                        movementIndicator = { icon: '⬇️', className: 'text-red', title: 'Desceu no ranking' }
+                      } else {
+                        movementIndicator = { icon: '➖', className: 'text-muted', title: 'Permaneceu na mesma posição' }
+                      }
+                    }
+
                     return (
                       <div
                         key={entry.user_id}
@@ -718,6 +786,11 @@ async function handleBet(matchId: string, data: {
                         <span className={`flex-1 text-sm font-medium truncate ${entry.is_me ? 'text-green font-bold' : ''}`}>
                           {entry.nickname}{entry.is_me ? ' (você)' : ''}
                         </span>
+                        {movementIndicator && (
+                          <span className={`text-sm ${movementIndicator.className}`} title={movementIndicator.title}>
+                            {movementIndicator.icon}
+                          </span>
+                        )}
                         <span className="font-mono font-bold text-green text-sm">{entry.total_points}pts</span>
                       </div>
                     )
@@ -767,6 +840,7 @@ async function handleBet(matchId: string, data: {
                     const currentRound = Math.min(groupRoundIndex[group] ?? 0, totalRounds - 1)
                     const currentRoundMatches = rounds[currentRound] || []
                     const tableRows = groupTableRowsByLabel[label] || []
+                    const groupPreviousPositions = previousGroupTablePositions[label] || {}
 
                     return (
                       <div key={group}>
@@ -810,10 +884,30 @@ async function handleBet(matchId: string, data: {
                                 <div className=" gap-2 min-w-max ">
                                   {tableRows.map((row, idx) => {
                                     const teamMeta = teamMetaByAbbr[row.abbr]
+                                    const prevGroupPosition = groupPreviousPositions[row.abbr]
+                                    let groupMovement: { icon: string; className: string; title: string } | null = null
+
+                                    if (hasGroupTableHistory && prevGroupPosition != null) {
+                                      if (idx < prevGroupPosition) {
+                                        groupMovement = { icon: '⬆️', className: 'text-green', title: 'Subiu na classificação do grupo' }
+                                      } else if (idx > prevGroupPosition) {
+                                        groupMovement = { icon: '⬇️', className: 'text-red', title: 'Desceu na classificação do grupo' }
+                                      } else {
+                                        groupMovement = { icon: '➖', className: 'text-muted', title: 'Permaneceu na mesma posição do grupo' }
+                                      }
+                                    }
+
                                     return (
                                       <div key={row.abbr} className="grid grid-cols-[40px_1fr_repeat(7,40px)] gap-1 items-center px-2 py-2 rounded-lg bg-white/[0.02] min-w-[320px]">
                                         <span className="text-sm font-bold">{idx + 1}º</span>
-                                        <span>{teamMeta?.flag} {teamMeta?.name}</span>
+                                        <span className="flex items-center gap-1">
+                                          <span>{teamMeta?.flag} {teamMeta?.name}</span>
+                                          {groupMovement && (
+                                            <span className={`text-xs ${groupMovement.className}`} title={groupMovement.title}>
+                                              {groupMovement.icon}
+                                            </span>
+                                          )}
+                                        </span>
                                         <span className="text-center text-sm">{row?.pts ?? 0}</span>
                                         <span className="text-center text-sm">{row?.played ?? 0}</span>
                                         <span className="text-center text-sm">{row?.wins ?? 0}</span>
