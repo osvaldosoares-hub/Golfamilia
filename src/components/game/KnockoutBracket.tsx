@@ -422,7 +422,7 @@ export default function KnockoutBracket({ matches, bets, groupBets, teamMetaByAb
   }
 
   return (
-    <div className="space-y-4 w-full max-w-full xl:w-[1200px]">
+    <div className="space-y-4 w-full max-w-full xl:w-[900px]">
       <div className="flex justify-end">
         <button
           type="button"

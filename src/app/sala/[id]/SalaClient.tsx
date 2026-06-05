@@ -675,7 +675,7 @@ async function handleBet(matchId: string, data: {
     const phrases = [
       // Último lugar
       { maxPct: 0.1, phrases: [
-        'Você é o pior apostador da história bilas promax 📉',
+        'Você é o pior apostador da história pior que bilas promax 📉',
         'Parece que você chutou no escuro... e errou tudo 🦇',
         'Parabéns, você conseguiu ser o último! Você é pior que bilinhas👏',
         'Até um palpite aleatório seria melhor que isso 🤡',
@@ -761,10 +761,10 @@ async function handleBet(matchId: string, data: {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr] gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr_280px] gap-6">
 
-            {/* LEFT: Leaderboard + pontuação */}
-            <div className="space-y-4 animate-fade-up-1">
+            {/* LEFT: Regras + Aposta + Conquistas (1º no mobile, 1ª coluna no desktop) */}
+            <div className="space-y-4 animate-fade-up-1 order-1 xl:order-1">
               {/* Pontuação da sala */}
               <div className="card p-5">
                 <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-blue to-green" />
@@ -789,54 +789,7 @@ async function handleBet(matchId: string, data: {
                 </div>
               </div>
 
-              {/* Room bet */}
-              <div className="card p-5 relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-gold to-green" />
-                <p className="text-xs font-bold text-muted uppercase tracking-widest mb-3">🪙 Aposta da sala</p>
-                <div className="bg-dark-3 rounded-xl p-4 text-center mb-3">
-                  <div className="text-2xl font-black text-gold font-mono">{formatCoins(coinsInRoom)}</div>
-                  <div className="text-[10px] text-muted uppercase tracking-widest mt-1">GolCoins apostados</div>
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    placeholder="100"
-                    value={roomBetAmount}
-                    onChange={e => setRoomBetAmount(e.target.value)}
-                    disabled={roomBetLoading}
-                    className="flex-1 px-3 py-2 bg-dark-3 border border-white/[0.08] rounded-xl text-gold font-mono text-sm text-center outline-none focus:border-gold/50 transition-colors disabled:opacity-50"
-                  />
-                  <button
-                    disabled={roomBetLoading || !roomBetAmount || parseInt(roomBetAmount) < 1}
-                    onClick={handleRoomBet}
-                    className="px-4 py-2 bg-gold/20 border border-gold/40 rounded-xl text-gold text-sm font-bold hover:bg-gold/30 disabled:opacity-50 transition-all"
-                  >
-                    {roomBetLoading ? '...' : 'Apostar'}
-                  </button>
-                </div>
-                <p className="text-[10px] text-muted mt-2 text-center">Você pode apostar mais a qualquer momento</p>
-              </div>
-
-{/* Resumo da rodada - Destaque do desempenho do usuário */}
-              <div className="card p-5 relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-green to-emerald-400" />
-                <p className="text-xs font-bold text-muted uppercase tracking-widest mb-4">🎯 Sua Performance</p>
-                <div className="flex items-center justify-between gap-4 mb-3">
-                  <div className="flex-1 text-center">
-                    <div className="text-3xl font-black text-green font-mono">{roundSummary.myPoints}</div>
-                    <div className="text-[10px] text-muted uppercase tracking-widest mt-1">pontos</div>
-                  </div>
-                  <div className="w-px h-12 bg-white/[0.08]" />
-                <div className="flex-1 text-center">
-                    <div className="text-3xl font-black text-gold font-mono">#{roundSummary.myRank}º</div>
-                    <div className="text-[10px] text-muted uppercase tracking-widest mt-1">posição</div>
-                  </div>
-                </div>
-                <p className="text-center text-xs font-bold text-green/80 italic mt-1 min-h-[1em]">
-                  {rankPhrase}
-                </p>
-              </div>
+             
 
               <AchievementsCard
                 leaderboard={leaderboard}
@@ -847,57 +800,10 @@ async function handleBet(matchId: string, data: {
                 myRank={roundSummary.myRank}
                 previousRank={previousPositions[currentUser.id] != null ? previousPositions[currentUser.id] + 1 : null}
               />
-
-              {/* Leaderboard */}
-              <div className="card p-5 relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-gold to-red" />
-                <p className="text-xs font-bold text-muted uppercase tracking-widest mb-4">🏆 Ranking</p>
-                <div className="space-y-1">
-                  {leaderboard.map((entry, i) => {
-                    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`
-                    const prevPosition = previousPositions[entry.user_id]
-                    let movementIndicator: { icon: string; className: string; title: string } | null = null
-
-                    if (hasLeaderboardHistory && prevPosition != null) {
-                      if (i < prevPosition) {
-                        movementIndicator = { icon: '⬆️', className: 'text-green', title: 'Subiu no ranking' }
-                      } else if (i > prevPosition) {
-                        movementIndicator = { icon: '⬇️', className: 'text-red', title: 'Desceu no ranking' }
-                      } else {
-                        movementIndicator = { icon: '➖', className: 'text-muted', title: 'Permaneceu na mesma posição' }
-                      }
-                    }
-
-                    return (
-                      <div
-                        key={entry.user_id}
-                        className={`flex items-center gap-3 p-2 rounded-xl transition-colors ${entry.is_me ? 'bg-green/[0.06]' : 'hover:bg-white/[0.02]'}`}
-                      >
-                        <span className="text-sm w-6 text-center">{medal}</span>
-                        <div
-                          className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                          style={{ background: entry.avatar_color, color: getAvatarTextColor(entry.avatar_color) }}
-                        >
-                          {entry.nickname[0].toUpperCase()}
-                        </div>
-                        <span className={`flex-1 text-sm font-medium truncate ${entry.is_me ? 'text-green font-bold' : ''}`}>
-                          {entry.nickname}{entry.is_me ? ' (você)' : ''}
-                        </span>
-                        {movementIndicator && (
-                          <span className={`text-sm ${movementIndicator.className}`} title={movementIndicator.title}>
-                            {movementIndicator.icon}
-                          </span>
-                        )}
-                        <span className="font-mono font-bold text-green text-sm">{entry.total_points}pts</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
             </div>
 
-            {/* RIGHT: Tabs + Content */}
-            <div className="space-y-6 animate-fade-up-2">
+            {/* CENTER: Match content (tabs + games) — último no mobile, centro no desktop */}
+            <div className="space-y-6 animate-fade-up-2 order-3 xl:order-2">
               {/* Tab switcher */}
               <div className="flex border border-white/[0.08] rounded-xl overflow-hidden">
                 <button
@@ -920,7 +826,7 @@ async function handleBet(matchId: string, data: {
                 </button>
               </div>
 
-{/* Matches tab */}
+              {/* Matches tab */}
               {activeTab === 'matches' && (
                 <div className="space-y-8">
                   {sortedGroupLabels.map((label) => {
@@ -948,7 +854,7 @@ async function handleBet(matchId: string, data: {
                           <span className="phase-badge">{group}</span>
                           <div className="flex items-center gap-1 flex-wrap">
                             {teams.map(t => (
-                              <span key={t.abbr} className="text-sm" title={t.name}>{t.name} --</span>
+                              <span key={t.abbr} className="text-sm" title={t.name}>{t.flag} {t.name} —</span>
                             ))}
                           </div>
                           <span className="text-[10px] text-muted whitespace-nowrap">
@@ -960,7 +866,7 @@ async function handleBet(matchId: string, data: {
                           </span>
                         </button>
 
-{isOpen && (
+                        {isOpen && (
                           <div className="space-y-4 animate-fade-up">
                             {/* Tabela em linha (horizontal) */}
                             <div className="card overflow-hidden">
@@ -977,13 +883,11 @@ async function handleBet(matchId: string, data: {
                                   <span className="text-center">SG</span>
                                   <span className="text-center">GF</span>
                                 </div>
-
-                                <div className=" gap-2 min-w-max ">
+                                <div className="gap-2 min-w-max">
                                   {tableRows.map((row, idx) => {
                                     const teamMeta = teamMetaByAbbr[row.abbr]
                                     const prevGroupPosition = groupPreviousPositions[row.abbr]
                                     let groupMovement: { icon: string; className: string; title: string } | null = null
-
                                     if (hasGroupTableHistory && prevGroupPosition != null) {
                                       if (idx < prevGroupPosition) {
                                         groupMovement = { icon: '⬆️', className: 'text-green', title: 'Subiu na classificação do grupo' }
@@ -993,7 +897,6 @@ async function handleBet(matchId: string, data: {
                                         groupMovement = { icon: '➖', className: 'text-muted', title: 'Permaneceu na mesma posição do grupo' }
                                       }
                                     }
-
                                     return (
                                       <div key={row.abbr} className="grid grid-cols-[40px_1fr_repeat(7,40px)] gap-1 items-center px-2 py-2 rounded-lg bg-white/[0.02] min-w-[320px]">
                                         <span className="text-sm font-bold">{idx + 1}º</span>
@@ -1019,7 +922,7 @@ async function handleBet(matchId: string, data: {
                               </div>
                             </div>
 
-                            {/* Navegação por rodada + jogos embaixo */}
+                            {/* Navegação por rodada + jogos */}
                             <div className="space-y-3">
                               <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
                                 <button
@@ -1042,8 +945,6 @@ async function handleBet(matchId: string, data: {
                                   ›
                                 </button>
                               </div>
-
-                              {/* Placares */}
                               <div className="space-y-3">
                                 {currentRoundMatches.map(match => (
                                   <MatchCard
@@ -1108,6 +1009,74 @@ async function handleBet(matchId: string, data: {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* RIGHT: Performance + Ranking — 2º no mobile, 3ª coluna no desktop */}
+            <div className="space-y-4 animate-fade-up-1 order-2 xl:order-3">
+              {/* Sua Performance */}
+              <div className="card p-5 relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-green to-emerald-400" />
+                <p className="text-xs font-bold text-muted uppercase tracking-widest mb-4">🎯 Sua Performance</p>
+                <div className="flex items-center justify-between gap-4 mb-3">
+                  <div className="flex-1 text-center">
+                    <div className="text-3xl font-black text-green font-mono">{roundSummary.myPoints}</div>
+                    <div className="text-[10px] text-muted uppercase tracking-widest mt-1">pontos</div>
+                  </div>
+                  <div className="w-px h-12 bg-white/[0.08]" />
+                  <div className="flex-1 text-center">
+                    <div className="text-3xl font-black text-gold font-mono">#{roundSummary.myRank}º</div>
+                    <div className="text-[10px] text-muted uppercase tracking-widest mt-1">posição</div>
+                  </div>
+                </div>
+                <p className="text-center text-xs font-bold text-green/80 italic mt-1 min-h-[1em]">
+                  {rankPhrase}
+                </p>
+              </div>
+
+              {/* Leaderboard */}
+              <div className="card p-5 relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-gold to-red" />
+                <p className="text-xs font-bold text-muted uppercase tracking-widest mb-4">🏆 Ranking</p>
+                <div className="space-y-1">
+                  {leaderboard.map((entry, i) => {
+                    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`
+                    const prevPosition = previousPositions[entry.user_id]
+                    let movementIndicator: { icon: string; className: string; title: string } | null = null
+                    if (hasLeaderboardHistory && prevPosition != null) {
+                      if (i < prevPosition) {
+                        movementIndicator = { icon: '⬆️', className: 'text-green', title: 'Subiu no ranking' }
+                      } else if (i > prevPosition) {
+                        movementIndicator = { icon: '⬇️', className: 'text-red', title: 'Desceu no ranking' }
+                      } else {
+                        movementIndicator = { icon: '➖', className: 'text-muted', title: 'Permaneceu na mesma posição' }
+                      }
+                    }
+                    return (
+                      <div
+                        key={entry.user_id}
+                        className={`flex items-center gap-3 p-2 rounded-xl transition-colors ${entry.is_me ? 'bg-green/[0.06]' : 'hover:bg-white/[0.02]'}`}
+                      >
+                        <span className="text-sm w-6 text-center">{medal}</span>
+                        <div
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                          style={{ background: entry.avatar_color, color: getAvatarTextColor(entry.avatar_color) }}
+                        >
+                          {entry.nickname[0].toUpperCase()}
+                        </div>
+                        <span className={`flex-1 text-sm font-medium truncate ${entry.is_me ? 'text-green font-bold' : ''}`}>
+                          {entry.nickname}{entry.is_me ? ' (você)' : ''}
+                        </span>
+                        {movementIndicator && (
+                          <span className={`text-sm ${movementIndicator.className}`} title={movementIndicator.title}>
+                            {movementIndicator.icon}
+                          </span>
+                        )}
+                        <span className="font-mono font-bold text-green text-sm">{entry.total_points}pts</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </div>
