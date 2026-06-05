@@ -8,6 +8,7 @@ import AddCoinsModal from '@/components/ui/AddCoinsModal'
 import MatchCard from '@/components/game/MatchCard'
 import GroupTableCard from '../../../components/game/GroupTableCard'
 import KnockoutBracket from '@/components/game/KnockoutBracket'
+import AchievementsCard from '@/components/ui/AchievementsCard'
 import type { User, Room, Match, Bet, LeaderboardEntry, GroupBet, GroupTeamInfo } from '@/types'
 import { formatCoins, getAvatarColor, getAvatarTextColor, isKnockoutBetReleased } from '@/lib/utils'
 
@@ -836,6 +837,16 @@ async function handleBet(matchId: string, data: {
                   {rankPhrase}
                 </p>
               </div>
+
+              <AchievementsCard
+                leaderboard={leaderboard}
+                bets={bets}
+                groupBets={groupBets}
+                allMatches={allMatches}
+                coinsInRoom={coinsInRoom}
+                myRank={roundSummary.myRank}
+                previousRank={previousPositions[currentUser.id] != null ? previousPositions[currentUser.id] + 1 : null}
+              />
 
               {/* Leaderboard */}
               <div className="card p-5 relative overflow-hidden">
