@@ -63,28 +63,43 @@ export default function CountdownTimer() {
     )
   }
 
+// Calculate urgency level based on time remaining
+  const totalHours = timeLeft.days * 24 + timeLeft.hours
+  const isUrgent = totalHours < 24 // Less than 24 hours
+  const isVeryUrgent = totalHours < 1 // Less than 1 hour
+  
+  // Dynamic classes based on urgency
+  const containerClass = isVeryUrgent 
+    ? 'from-red/20 to-orange/20 border-red/40 glow-red animate-pulse' 
+    : isUrgent 
+      ? 'from-orange/20 to-gold/20 border-orange/40' 
+      : 'from-green/10 to-gold/10 border-white/[0.06]'
+      
+  const numberClass = isVeryUrgent ? 'text-red' : isUrgent ? 'text-orange' : 'text-green'
+  const secondsClass = isVeryUrgent ? 'text-red' : isUrgent ? 'text-orange' : 'text-gold'
+
   return (
     <div className="mt-6 animate-fade-up">
-      <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green/10 to-gold/10 border border-white/[0.06] rounded-2xl px-4 py-3">
+      <div className={`inline-flex items-center gap-2 bg-gradient-to-r ${containerClass} border rounded-2xl px-4 py-3 transition-all duration-500`}>
         <div className="text-xl">🏆</div>
         <div className="flex items-center gap-3 font-mono">
           <div className="text-center">
-            <div className="text-2xl font-black text-green">{String(timeLeft.days).padStart(2, '0')}</div>
+            <div className={`text-2xl font-black ${numberClass} transition-smooth`}>{String(timeLeft.days).padStart(2, '0')}</div>
             <div className="text-[10px] uppercase tracking-widest text-muted">dias</div>
           </div>
           <div className="text-lg text-muted">:</div>
           <div className="text-center">
-            <div className="text-2xl font-black text-white">{String(timeLeft.hours).padStart(2, '0')}</div>
+            <div className={`text-2xl font-black ${isVeryUrgent ? 'text-red' : isUrgent ? 'text-orange' : 'text-white'} transition-smooth`}>{String(timeLeft.hours).padStart(2, '0')}</div>
             <div className="text-[10px] uppercase tracking-widest text-muted">hrs</div>
           </div>
           <div className="text-lg text-muted">:</div>
           <div className="text-center">
-            <div className="text-2xl font-black text-white">{String(timeLeft.minutes).padStart(2, '0')}</div>
+            <div className={`text-2xl font-black ${isVeryUrgent ? 'text-red' : isUrgent ? 'text-orange' : 'text-white'} transition-smooth`}>{String(timeLeft.minutes).padStart(2, '0')}</div>
             <div className="text-[10px] uppercase tracking-widest text-muted">min</div>
           </div>
           <div className="text-lg text-muted">:</div>
           <div className="text-center">
-            <div className="text-2xl font-black text-gold">{String(timeLeft.seconds).padStart(2, '0')}</div>
+            <div className={`text-2xl font-black ${secondsClass} transition-smooth`}>{String(timeLeft.seconds).padStart(2, '0')}</div>
             <div className="text-[10px] uppercase tracking-widest text-muted">seg</div>
           </div>
         </div>

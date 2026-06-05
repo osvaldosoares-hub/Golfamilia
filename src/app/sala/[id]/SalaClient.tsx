@@ -63,9 +63,26 @@ export default function SalaClient({ user, room, leaderboard, matches, initialBe
   )
   const [showCoins, setShowCoins] = useState(false)
   const [coinsInRoom, setCoinsInRoom] = useState(myCoinsInRoom)
-  const [roomBetAmount, setRoomBetAmount] = useState('')
+const [roomBetAmount, setRoomBetAmount] = useState('')
   const [roomBetLoading, setRoomBetLoading] = useState(false)
   const [simulateLoading, setSimulateLoading] = useState(false)
+  const [isLoadingMatches, setIsLoadingMatches] = useState(false)
+  const [rankPhrase, setRankPhrase] = useState('')
+
+  // Calcula resumo do desempenho do usuário na sala
+  const roundSummary = useMemo(() => {
+    const myEntry = leaderboard.find(e => e.is_me)
+    const myPoints = myEntry?.total_points ?? 0
+    const myRank = leaderboard.findIndex(e => e.is_me) + 1
+    return { myPoints, myRank, totalPlayers: leaderboard.length }
+  }, [leaderboard])
+
+  // Seta frase após montagem no cliente para evitar erro de hidratação
+  useEffect(() => {
+    if (roundSummary.totalPlayers > 0) {
+      setRankPhrase(rankPhrases(roundSummary.myRank, roundSummary.totalPlayers))
+    }
+  }, [roundSummary.myRank, roundSummary.totalPlayers])
   const [activeTab, setActiveTab] = useState<'matches' | 'knockout' | 'table'>('matches')
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const [groupRoundIndex, setGroupRoundIndex] = useState<Record<string, number>>({})
@@ -653,7 +670,56 @@ async function handleBet(matchId: string, data: {
       setSimulateLoading(false)
     }
   }
-   // Log para depuração
+  function rankPhrases(rank: number, total: number): string {
+    const phrases = [
+      // Último lugar
+      { maxPct: 0.1, phrases: [
+        'Você é o pior apostador da história bilas promax 📉',
+        'Parece que você chutou no escuro... e errou tudo 🦇',
+        'Parabéns, você conseguiu ser o último! Você é pior que bilinhas👏',
+        'Até um palpite aleatório seria melhor que isso 🤡',
+        "Você é pior que o zahree de Vitoguro"
+      ]},
+      // Lá embaixo
+      { maxPct: 0.3, phrases: [
+        'Wow, você conseguiu passar de ruim pra "menos pior" 🎉',
+        'Se isso fosse prova, você teria repetido de ano 📚',
+        'Tá quase tão ruim quanto o Ragebait Felipe... quase 🥴',
+        'Pelo menos não é o último? Ou talvez seja questão de tempo ⏳',
+      ]},
+      // Meio da tabela
+      { maxPct: 0.6, phrases: [
+        'Meio de tabela. O famoso "tá dando pro gasto" 🤷',
+        'Nem bom, nem ruim... medíocre. Mas com carinho 💅',
+        'Você está na zona da medíocridade, confortável aí? 🛋️',
+        'Se futebol fosse música, você seria um Luan Santana Mediano 🎸',
+      ]},
+      // Quase no topo
+      { maxPct: 0.85, phrases: [
+        'Quase lá!',
+        'Tá chegando perto, mas ainda falta muito 🌅',
+        'Você até que tá bem... pra quem não sabe nada de futebol ⚽',
+        'Respeitável. Mas respeito não ganha campeonato 🏆',
+      ]},
+      // Topo
+      { maxPct: 1, phrases: [
+        'Olha o paredão! Alguém estudou os jogos 📚🧠',
+        'Você é o Pelé das apostas! Ou pelo menos o KAUE DAS APOSTAS... 🐐',
+        'Se virar técnico, a seleção não perde uma 🇧🇷🏆',
+        'Desconfio que você é o próprio ELIEL LIRA das apostas 👀',
+      ]},
+    ]
+
+    const pct = rank / total
+    for (const tier of phrases) {
+      if (pct <= tier.maxPct) {
+        return tier.phrases[Math.floor(Math.random() * tier.phrases.length)]
+      }
+    }
+
+    return `Você está em ${rank}º de ${total}`
+  }
+
   return (
     <>
       <Navbar user={currentUser} onAddCoins={() => setShowCoins(true)} />
@@ -749,6 +815,26 @@ async function handleBet(matchId: string, data: {
                   </button>
                 </div>
                 <p className="text-[10px] text-muted mt-2 text-center">Você pode apostar mais a qualquer momento</p>
+              </div>
+
+{/* Resumo da rodada - Destaque do desempenho do usuário */}
+              <div className="card p-5 relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-green to-emerald-400" />
+                <p className="text-xs font-bold text-muted uppercase tracking-widest mb-4">🎯 Sua Performance</p>
+                <div className="flex items-center justify-between gap-4 mb-3">
+                  <div className="flex-1 text-center">
+                    <div className="text-3xl font-black text-green font-mono">{roundSummary.myPoints}</div>
+                    <div className="text-[10px] text-muted uppercase tracking-widest mt-1">pontos</div>
+                  </div>
+                  <div className="w-px h-12 bg-white/[0.08]" />
+                <div className="flex-1 text-center">
+                    <div className="text-3xl font-black text-gold font-mono">#{roundSummary.myRank}º</div>
+                    <div className="text-[10px] text-muted uppercase tracking-widest mt-1">posição</div>
+                  </div>
+                </div>
+                <p className="text-center text-xs font-bold text-green/80 italic mt-1 min-h-[1em]">
+                  {rankPhrase}
+                </p>
               </div>
 
               {/* Leaderboard */}

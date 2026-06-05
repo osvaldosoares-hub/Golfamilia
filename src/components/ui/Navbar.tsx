@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import type { User } from '@/types'
-import { formatCoins } from '@/lib/utils'
+import { formatCoins, getAvatarTextColor } from '@/lib/utils'
 
 interface Props {
   user: User
@@ -39,10 +39,10 @@ export default function Navbar({ user, onAddCoins }: Props) {
           <span className="text-xs text-gold/60 font-bold">+ ADD</span>
         </button>
 
-        <div className="flex items-center gap-2 px-3 py-2 bg-white/[0.04] rounded-xl border border-white/[0.06]">
+<div className="flex items-center gap-2 px-3 py-2 bg-white/[0.04] rounded-xl border border-white/[0.06]">
           <div
-            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-            style={{ background: user?.avatar_color, color: '#000' }}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-transform hover:scale-105"
+            style={{ background: user?.avatar_color, color: getAvatarTextColor(user?.avatar_color || '#00D26A') }}
           >
             {user?.nickname[0].toUpperCase()}
           </div>

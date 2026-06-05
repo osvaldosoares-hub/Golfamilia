@@ -107,13 +107,44 @@ export default function MatchCard({ match, existingBet, onBet, betStats, isDoubl
   }, [scoreH, scoreA])
 
   // Format countdown string
-  const countdownLabel = (() => {
+const countdownLabel = (() => {
     if (timeLeft <= 0) return null
     if (timeLeft > 60 * 60 * 1000) return null // only show when < 1h
     const mins = Math.floor(timeLeft / 60000)
     const secs = Math.floor((timeLeft % 60000) / 1000)
     return `⏱ ${mins}:${String(secs).padStart(2, '0')}`
   })()
+
+  // Skeleton loading state while submitting bet
+  if (loading) {
+    return (
+      <div className="card overflow-hidden">
+        <div className="h-[2px] bg-white/[0.04]" />
+        <div className="p-5 space-y-4">
+          <div className="flex justify-between">
+            <div className="skeleton h-4 w-32 rounded" />
+            <div className="skeleton h-5 w-20 rounded" />
+          </div>
+          <div className="flex justify-around py-4">
+            <div className="text-center space-y-2">
+              <div className="skeleton h-10 w-10 rounded-full mx-auto" />
+              <div className="skeleton h-4 w-20 rounded" />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="skeleton h-12 w-12 rounded-lg" />
+              <div className="skeleton h-4 w-2 rounded" />
+              <div className="skeleton h-12 w-12 rounded-lg" />
+            </div>
+            <div className="text-center space-y-2">
+              <div className="skeleton h-10 w-10 rounded-full mx-auto" />
+              <div className="skeleton h-4 w-20 rounded" />
+            </div>
+          </div>
+          <div className="skeleton h-10 w-full rounded-lg" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={`card overflow-hidden transition-all ${hasBet ? 'border-green/20' : 'hover:border-white/20'}`}>

@@ -105,8 +105,78 @@
   0%   { background-position: -200% center; }
   100% { background-position: 200% center; }
 }
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+@keyframes confetti-pop {
+  0% { transform: scale(0); opacity: 1; }
+  80% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
 
 .animate-fade-up { animation: fadeUp 0.4s ease forwards; }
 .animate-fade-up-1 { animation: fadeUp 0.4s 0.1s ease both; }
 .animate-fade-up-2 { animation: fadeUp 0.4s 0.2s ease both; }
 .animate-fade-up-3 { animation: fadeUp 0.4s 0.3s ease both; }
+
+/* Skeleton loading animation */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #1a2233 25%, #243047 50%, #1a2233 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Smooth hover transitions */
+.transition-smooth {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Scale on hover for interactive cards */
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+/* Pulse animation for confete/celebration */
+@keyframes pulse-celeb {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+.animate-celeb {
+  animation: pulse-celeb 0.3s ease-in-out;
+}
+
+/* Glow effect on highlight */
+.glow-green {
+  box-shadow: 0 0 20px rgba(0, 210, 106, 0.3);
+}
+.animate-pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
+.animate-confetti { animation: confetti-pop 0.5s ease-out; }
+
+/* Skeleton loading utilities */
+.skeleton {
+  @apply bg-white/10 rounded animate-pulse;
+}
+.skeleton-line {
+  @apply h-4 bg-white/10 rounded animate-pulse;
+}
+.skeleton-circle {
+  @apply w-10 h-10 rounded-full bg-white/10 animate-pulse;
+}
+.skeleton-card {
+  @apply bg-dark-2 border border-white/[0.08] rounded-2xl p-5;
+}
+
+/* Hover micro-animations */
+.hover-lift-soft {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-lift-soft:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(0,0,0,0.3);
+}
+

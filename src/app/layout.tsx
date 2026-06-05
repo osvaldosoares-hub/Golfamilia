@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${dmSans.variable} ${spaceMono.variable}`}>
+<html lang="pt-BR" className={`${dmSans.variable} ${spaceMono.variable} dark`}>
       <body className="bg-dark text-white antialiased flex flex-col min-h-screen">
         <main className="flex-1">{children}</main>
 
