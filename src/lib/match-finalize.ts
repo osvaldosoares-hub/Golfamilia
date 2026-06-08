@@ -342,8 +342,20 @@ export async function finalizeMatchAndScore(
         .eq('group_label', match.group_label)
         .returns<GroupBetRow[]>()
 
+      const rawGroupBets = groupBets || []
+
       // Deduplicar palpites de grupo: manter apenas o mais recente por (room_id, user_id)
-      const deduplicatedGroupBets = deduplicateBetsByUser(groupBets || [])
+      const deduplicatedGroupBets = deduplicateBetsByUser(rawGroupBets)
+
+      // Zerar points_earned dos palpites de grupo duplicados descartados
+      const keptGroupIds = new Set(deduplicatedGroupBets.map((b) => b.id))
+      const discardedGroupBets = rawGroupBets.filter((b) => !keptGroupIds.has(b.id))
+      for (const discarded of discardedGroupBets) {
+        await db
+          .from('group_bets')
+          .update({ points_earned: null })
+          .eq('id', discarded.id)
+      }
 
       const groupRoomIds = Array.from(new Set(deduplicatedGroupBets.map((bet) => bet.room_id)))
       if (groupRoomIds.length > 0) {
