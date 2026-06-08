@@ -252,6 +252,16 @@ export async function finalizeMatchAndScore(
   // Deduplicar: manter apenas a aposta mais recente por (room_id, user_id)
   const betsList = deduplicateBetsByUser(rawBetsList)
 
+  // Zerar points_earned das bets duplicadas descartadas para não contarem no total da sala
+  const keptIds = new Set(betsList.map((b) => b.id))
+  const discardedBets = rawBetsList.filter((b) => !keptIds.has(b.id))
+  for (const discarded of discardedBets) {
+    await db
+      .from('bets')
+      .update({ points_earned: null })
+      .eq('id', discarded.id)
+  }
+
   const roomIds = Array.from(new Set(betsList.map((bet) => bet.room_id)))
   const { data: rooms } = await db
     .from('rooms')
