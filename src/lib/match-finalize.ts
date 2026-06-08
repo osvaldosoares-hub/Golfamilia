@@ -6,7 +6,7 @@ const DOUBLE_POINTS_ROOM_CODES = ['FY4CXF']
 // Lista de jogos que valem 2x pontos
 // Formato: "HOME_ABBR-AWAY_ABBR" (qualquer ordem)
 const DOUBLE_POINTS_MATCHES = [
- 'COD-UZB', // RDC Democrática do Congo x Uzbequistão
+  'COD-UZB', // RDC Democrática do Congo x Uzbequistão
   'UZB-COD', // Uzbequistão x RDC Democrática do Congo
   'CPV-KSA',
   'KSA-CPV',
@@ -42,6 +42,7 @@ interface MatchRow {
 interface BetRow {
   id: string
   room_id: string
+  user_id: string
   predicted_home: number
   predicted_away: number
   predicted_qualifier: string | null
@@ -65,6 +66,7 @@ interface GroupMatchRow {
 interface GroupBetRow {
   id: string
   room_id: string
+  user_id: string
   first_team: string
   second_team: string
   third_team: string
@@ -141,6 +143,22 @@ function buildGroupRanking(matches: GroupMatchRow[]): string[] {
       return a[0].localeCompare(b[0])
     })
     .map(([abbr]) => abbr)
+}
+
+/**
+ * Deduplica uma lista de apostas mantendo apenas a mais recente por (room_id, user_id).
+ * Assume que registros com id maior são mais recentes.
+ */
+function deduplicateBetsByUser<T extends { id: string; room_id: string; user_id: string }>(bets: T[]): T[] {
+  const latest = new Map<string, T>()
+  for (const bet of bets) {
+    const key = `${bet.room_id}:${bet.user_id}`
+    const existing = latest.get(key)
+    if (!existing || bet.id > existing.id) {
+      latest.set(key, bet)
+    }
+  }
+  return Array.from(latest.values())
 }
 
 async function recalcRoomTotals(db: SupabaseClient, roomIds: string[]) {
@@ -225,14 +243,17 @@ export async function finalizeMatchAndScore(
 
   const { data: bets } = await db
     .from('bets')
-    .select('id, room_id, predicted_home, predicted_away, predicted_qualifier')
+    .select('id, room_id, user_id, predicted_home, predicted_away, predicted_qualifier')
     .eq('match_id', matchId)
     .returns<BetRow[]>()
 
-  const betsList = bets || []
+  const rawBetsList = bets || []
+
+  // Deduplicar: manter apenas a aposta mais recente por (room_id, user_id)
+  const betsList = deduplicateBetsByUser(rawBetsList)
 
   const roomIds = Array.from(new Set(betsList.map((bet) => bet.room_id)))
-const { data: rooms } = await db
+  const { data: rooms } = await db
     .from('rooms')
     .select('id, code, pts_exact, pts_winner')
     .in('id', roomIds)
@@ -261,14 +282,14 @@ const { data: rooms } = await db
 
     const winnerPick = bet.predicted_qualifier ?? winnerFromScore
 
-let points = 0
+    let points = 0
     if (predictedHome === realHome && predictedAway === realAway) {
       points = room.pts_exact + room.pts_winner
     } else if (winnerPick === realQualifier) {
       points = room.pts_winner
     }
 
-// Aplicar multiplicador 2x para jogos especiais
+    // Aplicar multiplicador 2x para jogos especiais
     if (isDoublePointsMatch(match.home_abbr, match.away_abbr, room.code)) {
       points = points * 2
     }
@@ -307,11 +328,14 @@ let points = 0
 
       const { data: groupBets } = await db
         .from('group_bets')
-        .select('id, room_id, first_team, second_team, third_team')
+        .select('id, room_id, user_id, first_team, second_team, third_team')
         .eq('group_label', match.group_label)
         .returns<GroupBetRow[]>()
 
-      const groupRoomIds = Array.from(new Set((groupBets || []).map((bet) => bet.room_id)))
+      // Deduplicar palpites de grupo: manter apenas o mais recente por (room_id, user_id)
+      const deduplicatedGroupBets = deduplicateBetsByUser(groupBets || [])
+
+      const groupRoomIds = Array.from(new Set(deduplicatedGroupBets.map((bet) => bet.room_id)))
       if (groupRoomIds.length > 0) {
         const { data: groupRooms } = await db
           .from('rooms')
@@ -322,7 +346,7 @@ let points = 0
         const groupRoomSet = new Set<string>()
         groupRooms?.forEach((room) => groupRoomSet.add(room.id))
 
-        for (const groupBet of groupBets || []) {
+        for (const groupBet of deduplicatedGroupBets) {
           if (!groupRoomSet.has(groupBet.room_id)) continue
 
           const isFirstCorrect = groupBet.first_team === top1

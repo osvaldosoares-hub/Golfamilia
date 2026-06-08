@@ -675,10 +675,10 @@ async function handleBet(matchId: string, data: {
     const phrases = [
       // Último lugar
       { maxPct: 0.1, phrases: [
-        'Você é o pior apostador da história pior que bilas promax 📉',
-        'Parece que você chutou no escuro... e errou tudo 🦇',
+        'Você é o pior apostador da história, pior que bilas promax 📉',
+        'Parece que você chutou no escuro... e errou tudo nem vitoguro consegue essa proeza🦇',
         'Parabéns, você conseguiu ser o último! Você é pior que bilinhas👏',
-        'Até um palpite aleatório seria melhor que isso 🤡',
+        'Até um palpite aleatório seria melhor que isso, nem Ragebait Felipe fez isso 🤡',
         "Você é pior que o zahree de Vitoguro"
       ]},
       // Lá embaixo
@@ -690,7 +690,7 @@ async function handleBet(matchId: string, data: {
       ]},
       // Meio da tabela
       { maxPct: 0.6, phrases: [
-        'Meio de tabela. O famoso "tá dando pro gasto" 🤷',
+        'Meio de tabela. O famoso "tá dando pro gasto" la ele🤷',
         'Nem bom, nem ruim... medíocre. Mas com carinho 💅',
         'Você está na zona da medíocridade, confortável aí? 🛋️',
         'Se futebol fosse música, você seria um Luan Santana Mediano 🎸',
