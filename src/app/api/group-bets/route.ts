@@ -60,23 +60,23 @@ export async function POST(req: NextRequest) {
 
   if (!member) return NextResponse.json({ error: 'Não é membro desta sala' }, { status: 403 })
 
-  // Check if group still has open matches (can't bet after group is locked)
-  const { data: openMatches } = await db
+  // Check if group still has open/scheduled matches (can't bet after group is locked)
+  const { data: availableMatches } = await db
     .from('matches')
     .select('id, match_date, match_time')
     .eq('phase', 'group')
     .eq('group_label', group_label)
-    .eq('status', 'open')
+    .in('status', ['scheduled', 'open'])
     .order('match_date', { ascending: true })
     .order('match_time', { ascending: true })
     .limit(1)
 
-  if (!openMatches || openMatches.length === 0) {
+  if (!availableMatches || availableMatches.length === 0) {
     return NextResponse.json({ error: 'Apostas encerradas para este grupo' }, { status: 400 })
   }
 
   // Block group bets 1 hour before the first match in the group
-  const firstMatch = openMatches[0]
+  const firstMatch = availableMatches[0]
   if (isBetLocked(firstMatch.match_date, firstMatch.match_time)) {
     return NextResponse.json({ error: 'Apostas encerradas — menos de 1h para o primeiro jogo do grupo' }, { status: 400 })
   }

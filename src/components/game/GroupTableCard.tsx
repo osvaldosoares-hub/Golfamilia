@@ -1,7 +1,7 @@
 'use client'
 // src/components/game/GroupTableCard.tsx
-import { useState } from 'react'
-import type { GroupBet, GroupTeamInfo } from '@/types'
+import { useState, useEffect } from 'react'
+import type { GroupBet, GroupTeamInfo, Match } from '@/types'
 
 interface Props {
   groupLabel: string
@@ -9,18 +9,42 @@ interface Props {
   existingBet?: GroupBet
   actualTop3?: string[]
   onBet: (data: { first_team: string; second_team: string; third_team: string }) => Promise<void>
+  locked?: boolean
+  groupMatches?: Match[] // Jogos do grupo para verificar lock
 }
 
-export default function GroupTableCard({ groupLabel, teams, existingBet, actualTop3, onBet }: Props) {
+export default function GroupTableCard({ groupLabel, teams, existingBet, actualTop3, onBet, locked = false, groupMatches = [] }: Props) {
   const [first, setFirst] = useState(existingBet?.first_team || '')
   const [second, setSecond] = useState(existingBet?.second_team || '')
   const [third, setThird] = useState(existingBet?.third_team || '')
   const [loading, setLoading] = useState(false)
   const [editing, setEditing] = useState(false)
 
+  // Verifica se algum jogo do grupo já começou ou terminou
+  const groupLocked = locked || (() => {
+    if (groupMatches.length === 0) return false
+    const now = new Date()
+    return groupMatches.some(m => {
+      if (m.status === 'finished' || m.status === 'live') return true
+      if (m.status === 'locked') return true
+      // Verifica se o jogo começou (menos de 1h para o início)
+      const matchTime = new Date(`${m.match_date}T${m.match_time}:00`)
+      const msUntilStart = matchTime.getTime() - now.getTime()
+      return msUntilStart <= 0
+    })
+  })()
+
+  useEffect(() => {
+    // Se o grupo trava enquanto usuário está editando, sai do modo edição
+    if (groupLocked && editing) {
+      setEditing(false)
+    }
+  }, [groupLocked, editing])
+
   const hasBet = !!existingBet && !editing
   const canSubmit = first && second && third && first !== second && first !== third && second !== third
   const canAutoCalculate = !!actualTop3 && actualTop3.length >= 3
+  const isLocked = locked || (!existingBet && locked)
 
   function availableFor(position: 'first' | 'second' | 'third') {
     const selected = { first, second, third }
@@ -92,7 +116,7 @@ export default function GroupTableCard({ groupLabel, teams, existingBet, actualT
             </div>
           </div>
 
-          <div className="space-y-3">
+<div className="space-y-3">
             <div>
               <div className="text-[10px] text-muted uppercase tracking-widest mb-1.5">Sua aposta</div>
               <div className="space-y-2">
@@ -111,17 +135,13 @@ export default function GroupTableCard({ groupLabel, teams, existingBet, actualT
               )}
             </div>
           </div>
-
-          <button
-            onClick={() => setEditing(true)}
-            className="mt-3 w-full text-xs text-muted hover:text-white border border-white/[0.08] rounded-xl py-2 transition-colors"
-          >
-            ✏️ Editar palpite
-          </button>
         </div>
       </div>
     )
   }
+
+// Override da variavel isLocked para usar o groupLocked dinamico
+  const isGroupLocked = groupLocked
 
   const positions = [
     { label: '1º Lugar', value: first, setter: setFirst, color: 'border-gold/30 focus:border-gold/60', position: 'first' as const },
@@ -130,12 +150,16 @@ export default function GroupTableCard({ groupLabel, teams, existingBet, actualT
   ]
 
   return (
-    <div className="card overflow-hidden hover:border-white/20 transition-all">
-      <div className="h-[2px] bg-white/[0.04]" />
+    <div className={`card overflow-hidden transition-all ${isGroupLocked ? 'border-red/20' : 'hover:border-white/20'}`}>
+      <div className={`h-[2px] ${isGroupLocked ? 'bg-red' : 'bg-white/[0.04]'}`} />
       <div className="p-4">
         <div className="flex justify-between items-center mb-3">
           <span className="text-xs font-bold text-muted uppercase tracking-widest">📊 Grupo {groupLabel}</span>
-          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-white/[0.06] text-muted">🕐 Aberto</span>
+          {isGroupLocked ? (
+            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-red/10 text-red">🔒 Encerrado</span>
+          ) : (
+            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-white/[0.06] text-muted">🕐 Aberto</span>
+          )}
         </div>
 
         <div className="space-y-2 mb-3">
@@ -145,7 +169,8 @@ export default function GroupTableCard({ groupLabel, teams, existingBet, actualT
               <select
                 value={value}
                 onChange={(e) => setter(e.target.value)}
-                className={`flex-1 px-3 py-2 bg-dark-3 border rounded-xl text-sm outline-none transition-colors appearance-none cursor-pointer ${color}`}
+                disabled={isGroupLocked}
+                className={`flex-1 px-3 py-2 bg-dark-3 border rounded-xl text-sm outline-none transition-colors appearance-none cursor-pointer ${color} ${isGroupLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <option value="">Selecione...</option>
                 {availableFor(position).map((team) => (
@@ -177,30 +202,36 @@ export default function GroupTableCard({ groupLabel, teams, existingBet, actualT
           <div>🏆 Acertou as 3 posições = <span className="text-gold font-bold">10 pts</span></div>
         </div>
 
-        <div className="grid grid-cols-1 gap-2">
-          <button
-            onClick={handleAutoCalculate}
-            disabled={!canAutoCalculate || loading}
-            className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-30 bg-blue/20 border border-blue/40 text-blue hover:bg-blue/30 disabled:hover:bg-blue/20"
-          >
-            🧮 Calcular minha aposta
-          </button>
+        {!isGroupLocked ? (
+          <div className="grid grid-cols-1 gap-2">
+            <button
+              onClick={handleAutoCalculate}
+              disabled={!canAutoCalculate || loading}
+              className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-30 bg-blue/20 border border-blue/40 text-blue hover:bg-blue/30 disabled:hover:bg-blue/20"
+            >
+              🧮 Calcular minha aposta
+            </button>
 
-          {!canAutoCalculate && (
-            <p className="text-[10px] text-muted text-center px-2">
-              Ainda não há dados suficientes para calcular automaticamente.
-              Você pode escolher sua aposta manualmente.
-            </p>
-          )}
+            {!canAutoCalculate && (
+              <p className="text-[10px] text-muted text-center px-2">
+                Ainda não há dados suficientes para calcular automaticamente.
+                Você pode escolher sua aposta manualmente.
+              </p>
+            )}
 
-          <button
-            onClick={handleSubmit}
-            disabled={!canSubmit || loading}
-            className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-30 bg-green/20 border border-green/40 text-green hover:bg-green/30 disabled:hover:bg-green/20"
-          >
-            {loading ? '⏳ Salvando...' : '✅ Confirmar palpite'}
-          </button>
-        </div>
+            <button
+              onClick={handleSubmit}
+              disabled={!canSubmit || loading}
+              className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-30 bg-green/20 border border-green/40 text-green hover:bg-green/30 disabled:hover:bg-green/20"
+            >
+              {loading ? '⏳ Salvando...' : '✅ Confirmar palpite'}
+            </button>
+          </div>
+        ) : (
+          <div className="text-xs text-muted text-center py-2 bg-dark-3 rounded-xl">
+            ⏱ Apostas encerradas para este grupo.
+          </div>
+        )}
       </div>
     </div>
   )
