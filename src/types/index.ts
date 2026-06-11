@@ -51,7 +51,8 @@ export interface Match {
   home_score?: number
   away_score?: number
   qualifier?: string
-  status: 'open' | 'locked' | 'finished'
+  status: 'scheduled' | 'open' | 'locked' | 'live' | 'finished'
+  match_phase?: string
   created_at: string
 }
 

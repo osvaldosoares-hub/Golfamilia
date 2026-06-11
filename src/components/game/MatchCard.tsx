@@ -49,8 +49,11 @@ export default function MatchCard({ match, existingBet, onBet, betStats, isDoubl
 
   const timeLocked = timeLeft <= 0
   const hasBet = !!existingBet && !editing
-  const locked = match.status !== 'open' || timeLocked
-  const isFinished = match.home_score != null && match.away_score != null
+  const isLive = match.status === 'live'
+  const isScheduled = match.status === 'scheduled'
+  const isFinished = match.status === 'finished' || (match.home_score != null && match.away_score != null)
+  // Só permite aposta se status for scheduled ou open, e não estiver time-locked
+  const locked = !(['scheduled', 'open'].includes(match.status)) || timeLocked
 
   // If the match gets locked/finished while the user is editing, return to view mode.
   useEffect(() => {
@@ -173,13 +176,26 @@ const countdownLabel = (() => {
                 {countdownLabel}
               </div>
             )}
-            <div className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-              locked ? 'bg-red/10 text-red' :
-              hasBet ? 'bg-green/10 text-green' :
-              'bg-white/[0.06] text-muted'
-            }`}>
-              {locked ? '🔒 Encerrado' : hasBet ? '✅ Aposta feita' : '🕐 Aberto'}
-            </div>
+            {isLive && (
+              <div className="text-xs font-bold px-2.5 py-1 rounded-full bg-red/10 text-red animate-pulse flex items-center gap-1">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-red animate-ping" />
+                <span>🔴 AO VIVO{match.match_phase ? ` · ${match.match_phase}` : ''}</span>
+              </div>
+            )}
+            {isScheduled && !isLive && (
+              <div className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue/10 text-blue">
+                📅 Marcado
+              </div>
+            )}
+            {!isLive && !isScheduled && (
+              <div className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                locked ? 'bg-red/10 text-red' :
+                hasBet ? 'bg-green/10 text-green' :
+                'bg-white/[0.06] text-muted'
+              }`}>
+                {locked ? '🔒 Encerrado' : hasBet ? '✅ Aposta feita' : '🕐 Aberto'}
+              </div>
+            )}
           </div>
         </div>
 
@@ -196,7 +212,8 @@ const countdownLabel = (() => {
           <div className="flex flex-col items-center gap-1">
             <div className="text-[10px] text-muted uppercase tracking-widest mb-1">Placar</div>
             <div className="flex items-center gap-2">
-              {hasBet && isFinished ? (
+              {/* Exibe placar real + palpite quando o jogo tem resultado (ao vivo ou finalizado) */}
+              {hasBet && (isFinished || isLive) && match.home_score != null && match.away_score != null ? (
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-muted uppercase tracking-widest">A</span>

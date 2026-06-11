@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (!match) return NextResponse.json({ error: 'Jogo não encontrado' }, { status: 404 })
-  if (match.status !== 'open') return NextResponse.json({ error: 'Apostas encerradas para este jogo' }, { status: 400 })
+  if (match.status !== 'open' && match.status !== 'scheduled') return NextResponse.json({ error: 'Apostas encerradas para este jogo' }, { status: 400 })
 
   // Knockout bets are only available from June 27th onward.
   if (match.phase !== 'group' && !isKnockoutBetReleased()) {

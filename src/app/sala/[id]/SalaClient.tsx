@@ -120,16 +120,37 @@ const [roomBetAmount, setRoomBetAmount] = useState('')
   }, [])
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetch('/api/matches')
-        .then(r => r.json())
-        .then(json => {
-          if (json.data) setAllMatches(json.data)
-        })
-        .catch(() => {})
-    }, 90 * 1000)
+    let isMounted = true
 
-    return () => clearInterval(interval)
+    async function syncAndFetch() {
+      try {
+        // Primeiro sincroniza com a API externa
+        await fetch('/api/matches/sync', { cache: 'no-store' })
+      } catch {
+        // Silencia erro de sync (pode ser falta de autorização)
+      }
+
+      if (!isMounted) return
+
+      // Depois busca os matches atualizados
+      try {
+        const res = await fetch('/api/matches', { cache: 'no-store' })
+        const json = await res.json()
+        if (json.data) setAllMatches(json.data)
+      } catch {
+        // Silencia erro
+      }
+    }
+
+    // Executa imediatamente também
+    syncAndFetch()
+
+    const interval = setInterval(syncAndFetch, 90 * 1000)
+
+    return () => {
+      isMounted = false
+      clearInterval(interval)
+    }
   }, [])
 
   useEffect(() => {

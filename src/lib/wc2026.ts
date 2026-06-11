@@ -11,6 +11,7 @@ export interface ApiMatch {
   home_score: number | null
   away_score: number | null
   status: string
+  phase?: string | null
   stadium: string
   stadium_city: string
 }
@@ -78,12 +79,12 @@ export function mapPhase(round: string): string {
 
 export function mapStatus(status: string): string {
   const mapping: Record<string, string> = {
-    scheduled: 'open',
-    live: 'locked',
+    scheduled: 'scheduled',
+    live: 'live',
     completed: 'finished',
-    postponed: 'open',
+    postponed: 'scheduled',
   }
-  return mapping[status] || 'open'
+  return mapping[status] || 'scheduled'
 }
 
 function normalizeTeamAbbr(rawAbbr: string | null | undefined, teamName: string | null | undefined): string {
@@ -124,5 +125,6 @@ export function mapApiMatchToDbRow(match: ApiMatch) {
     home_score: match.home_score,
     away_score: match.away_score,
     status: mapStatus(match.status),
+    match_phase: match.status === 'live' ? (match.phase || null) : null,
   }
 }
