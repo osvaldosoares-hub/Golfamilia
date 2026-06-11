@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 
-// World Cup 2026 starts June 11, 2026 at 5:00 PM UTC (first match)
-const COPA_START_DATE = new Date('2026-06-11T17:00:00Z')
+// World Cup 2026 bets lock at 6:00 PM UTC = 15:00 Brasília (first match kickoff - 1h)
+const COPA_START_DATE = new Date('2026-06-11T18:00:00Z')
 
 interface TimeLeft {
   days: number
@@ -63,7 +63,7 @@ export default function CountdownTimer() {
     )
   }
 
-// Calculate urgency level based on time remaining
+  // Calculate urgency level based on time remaining
   const totalHours = timeLeft.days * 24 + timeLeft.hours
   const isUrgent = totalHours < 24 // Less than 24 hours
   const isVeryUrgent = totalHours < 1 // Less than 1 hour
