@@ -69,14 +69,15 @@ const [roomBetAmount, setRoomBetAmount] = useState('')
   const [simulateLoading, setSimulateLoading] = useState(false)
   const [isLoadingMatches, setIsLoadingMatches] = useState(false)
   const [rankPhrase, setRankPhrase] = useState('')
+  const [leaderboardState, setLeaderboard] = useState<LeaderboardEntry[]>(leaderboard)
 
   // Calcula resumo do desempenho do usuário na sala
   const roundSummary = useMemo(() => {
-    const myEntry = leaderboard.find(e => e.is_me)
+    const myEntry = leaderboardState.find(e => e.is_me)
     const myPoints = myEntry?.total_points ?? 0
-    const myRank = leaderboard.findIndex(e => e.is_me) + 1
-    return { myPoints, myRank, totalPlayers: leaderboard.length }
-  }, [leaderboard])
+    const myRank = leaderboardState.findIndex(e => e.is_me) + 1
+    return { myPoints, myRank, totalPlayers: leaderboardState.length }
+  }, [leaderboardState])
 
   // Seta frase após montagem no cliente para evitar erro de hidratação
   useEffect(() => {
@@ -110,6 +111,51 @@ const [roomBetAmount, setRoomBetAmount] = useState('')
       .then(json => { if (json.data) setBetStats(json.data) })
       .catch(() => {})
   }, [room.id, bets])
+
+  // Poll leaderboard every 30 seconds for real-time ranking updates
+  useEffect(() => {
+    let isMounted = true
+
+    async function fetchLeaderboard() {
+      try {
+        // Recalcula pontos com base nos placares atuais (jogos ao vivo ou finalizados)
+        await fetch(`/api/rooms/${room.id}/recalc-leaderboard`, {
+          method: 'POST',
+          cache: 'no-store',
+        })
+      } catch {
+        // Silencia erro
+      }
+
+      if (!isMounted) return
+
+      try {
+        const res = await fetch(`/api/rooms/${room.id}`, { cache: 'no-store' })
+        const json = await res.json()
+        if (!isMounted) return
+        if (json.data?.leaderboard) {
+          // Atualiza o leaderboard
+          setLeaderboard(json.data.leaderboard)
+        }
+        if (json.data?.my_user) {
+          setCurrentUser((prev: User) => ({
+            ...prev,
+            coins: json.data.my_user.coins ?? prev.coins,
+          }))
+        }
+      } catch {
+        // Silencia erro
+      }
+    }
+
+    fetchLeaderboard()
+    const interval = setInterval(fetchLeaderboard, 30 * 1000)
+
+    return () => {
+      isMounted = false
+      clearInterval(interval)
+    }
+  }, [room.id])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -155,7 +201,7 @@ const [roomBetAmount, setRoomBetAmount] = useState('')
 
   useEffect(() => {
     const currentPositions: Record<string, number> = {}
-    leaderboard.forEach((entry, index) => {
+    leaderboardState.forEach((entry, index) => {
       currentPositions[entry.user_id] = index
     })
 
@@ -172,7 +218,7 @@ const [roomBetAmount, setRoomBetAmount] = useState('')
     snapshotUpdateTimeoutRef.current = setTimeout(() => {
       leaderboardSnapshotRef.current = currentPositions
     }, 1500)
-  }, [leaderboard])
+  }, [leaderboardState])
 
   function toggleGroup(group: string) {
     setOpenGroups(prev => ({ ...prev, [group]: !prev[group] }))
@@ -765,7 +811,7 @@ async function handleBet(matchId: string, data: {
                 <h1 className="text-3xl font-black tracking-widest">{room.name}</h1>
               </div>
               <p className="text-xs text-muted mt-1">
-                {leaderboard.length} jogadores · Fase de grupos · Copa do Mundo 2026
+              {leaderboardState.length} jogadores · Fase de grupos · Copa do Mundo 2026
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -806,14 +852,14 @@ async function handleBet(matchId: string, data: {
                 </div>
                 <div className="mt-3 pt-3 border-t border-white/[0.06] flex justify-between items-center">
                   <span className="text-xs text-muted">🏦 Total apostado na sala</span>
-                  <span className="font-mono font-bold text-gold text-sm">🪙 {formatCoins(leaderboard.reduce((sum, e) => sum + e.coins_in_room, 0))}</span>
+                  <span className="font-mono font-bold text-gold text-sm">🪙 {formatCoins(leaderboardState.reduce((sum, e) => sum + e.coins_in_room, 0))}</span>
                 </div>
               </div>
 
              
 
               <AchievementsCard
-                leaderboard={leaderboard}
+                leaderboard={leaderboardState}
                 bets={bets}
                 groupBets={groupBets}
                 allMatches={allMatches}
@@ -1059,7 +1105,7 @@ async function handleBet(matchId: string, data: {
                 <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-gold to-red" />
                 <p className="text-xs font-bold text-muted uppercase tracking-widest mb-4">🏆 Ranking</p>
                 <div className="space-y-1">
-                  {leaderboard.map((entry, i) => {
+                  {leaderboardState.map((entry, i) => {
                     const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`
                     const prevPosition = previousPositions[entry.user_id]
                     let movementIndicator: { icon: string; className: string; title: string } | null = null

@@ -25,7 +25,9 @@ function isAuthorized(req: NextRequest): boolean {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  // Permite requisições do frontend sem autorização
+  const isExternalCall = !!req.headers.get('x-sync-secret') || !!req.headers.get('authorization')
+  if (isExternalCall && !isAuthorized(req)) {
     return NextResponse.json({ error: 'Não autorizado para recálculo' }, { status: 401 })
   }
 
