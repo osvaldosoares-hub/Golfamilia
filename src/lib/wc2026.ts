@@ -125,6 +125,6 @@ export function mapApiMatchToDbRow(match: ApiMatch) {
     home_score: match.home_score,
     away_score: match.away_score,
     status: mapStatus(match.status),
-    match_phase: match.status === 'live' ? (match.phase || null) : null,
+    match_phase: match.phase || null,
   }
 }
