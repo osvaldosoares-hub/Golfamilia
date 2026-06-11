@@ -77,14 +77,21 @@ export function mapPhase(round: string): string {
   return mapping[normalized] || normalized
 }
 
-export function mapStatus(status: string): string {
+export function mapStatus(status: string, phase?: string | null): string {
+  const normalizedStatus = (status || '').toLowerCase().trim()
+
+  // Se o jogo está "live" mas a fase é "FT" (Full Time), consideramos como finished
+  if (normalizedStatus === 'live' && phase && ['FT', 'ET', 'PEN'].includes(phase.toUpperCase())) {
+    return 'finished'
+  }
+
   const mapping: Record<string, string> = {
     scheduled: 'scheduled',
     live: 'live',
     completed: 'finished',
     postponed: 'scheduled',
   }
-  return mapping[status] || 'scheduled'
+  return mapping[normalizedStatus] || 'scheduled'
 }
 
 function normalizeTeamAbbr(rawAbbr: string | null | undefined, teamName: string | null | undefined): string {
@@ -124,7 +131,7 @@ export function mapApiMatchToDbRow(match: ApiMatch) {
     match_time: matchTime,
     home_score: match.home_score,
     away_score: match.away_score,
-    status: mapStatus(match.status),
+    status: mapStatus(match.status, match.phase),
     match_phase: match.phase || null,
   }
 }

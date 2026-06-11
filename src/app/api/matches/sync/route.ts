@@ -90,12 +90,15 @@ export async function GET(req: NextRequest) {
 
     for (const match of syncedRows || []) {
       const wasFinished = beforeStatusMap.get(match.match_code) === 'finished'
-      const becameFinished = match.status === 'finished' && !wasFinished
+      const isFinished = match.status === 'finished'
+      const becameFinished = isFinished && !wasFinished
       const homeScore = match.home_score
       const awayScore = match.away_score
       const hasScores = homeScore != null && awayScore != null
 
-      if (!becameFinished || !hasScores) continue
+      // Finaliza se acabou de terminar OU se já estava finished mas com placar (pra recalcular)
+      if (!hasScores) continue
+      if (!becameFinished && !(isFinished && homeScore != null && awayScore != null)) continue
 
       const result = await finalizeMatchAndScore(
         db,
