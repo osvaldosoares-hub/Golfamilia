@@ -77,6 +77,11 @@ const MONTH_MAP: Record<string, number> = {
   Jul: 6, Ago: 7, Set: 8, Out: 9, Nov: 10, Dez: 11,
 }
 
+// Global lockout: At first match kickoff of the tournament
+// Mexico vs Africa (R32/1) - kickoff at 16:00 UTC on June 11, 2026 (4hrs Brasília / 7hrs São Paulo)
+// All bets lock when the first match kicks off
+const GLOBAL_LOCKOUT_TIME = new Date('2026-06-11T16:00:00Z')
+
 /** Parse match_date ("11 Jun") + match_time ("19:00") into a UTC Date for 2026 */
 export function parseMatchDateTime(matchDate: string, matchTime: string): Date {
   const [dayStr, monthStr] = matchDate.split(' ')
@@ -85,11 +90,12 @@ export function parseMatchDateTime(matchDate: string, matchTime: string): Date {
   return new Date(Date.UTC(2026, month, parseInt(dayStr), parseInt(hourStr), parseInt(minStr)))
 }
 
-/** Returns milliseconds until lockout (1h before kickoff). Negative = already locked. */
-export function msUntilLockout(matchDate: string, matchTime: string): number {
-  const kickoff = parseMatchDateTime(matchDate, matchTime)
-  const lockTime = kickoff.getTime() - 60 * 60 * 1000 // 1 hour before
-  return lockTime - Date.now()
+/** Returns milliseconds until lockout.
+ * Uses global lockout time (1h before first match) for ALL matches.
+ * Negative = already locked. */
+export function msUntilLockout(_matchDate: string, _matchTime: string): number {
+  // All bets lock at the same time: 1 hour before first match (15:00 UTC / 3hrs Brasília)
+  return GLOBAL_LOCKOUT_TIME.getTime() - Date.now()
 }
 
 /** Returns true if bets should be blocked (less than 1h before kickoff) */
