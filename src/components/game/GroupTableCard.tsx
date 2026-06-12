@@ -11,26 +11,37 @@ interface Props {
   onBet: (data: { first_team: string; second_team: string; third_team: string }) => Promise<void>
   locked?: boolean
   groupMatches?: Match[] // Jogos do grupo para verificar lock
+  userId?: string
 }
 
-export default function GroupTableCard({ groupLabel, teams, existingBet, actualTop3, onBet, locked = false, groupMatches = [] }: Props) {
+// Whitelist de usuários que podem fazer apostas mesmo após o bloqueio global
+const BETTING_WHITELIST = new Set([
+  'adf4ff21-e1b5-4fdb-ac43-6eda9a8aab5b'
+])
+
+export default function GroupTableCard({ groupLabel, teams, existingBet, actualTop3, onBet, locked = false, groupMatches = [], userId }: Props) {
   const [first, setFirst] = useState(existingBet?.first_team || '')
   const [second, setSecond] = useState(existingBet?.second_team || '')
   const [third, setThird] = useState(existingBet?.third_team || '')
   const [loading, setLoading] = useState(false)
   const [editing, setEditing] = useState(false)
 
+  // Verifica se o usuário está na whitelist
+  const isUserWhitelisted = userId && BETTING_WHITELIST.has(userId)
+
   // Verifica se algum jogo do grupo já começou ou terminou
   const groupLocked = locked || (() => {
     if (groupMatches.length === 0) return false
     const now = new Date()
     return groupMatches.some(m => {
+      // Nunca permitir apostas se jogo já foi finalizado ou está ao vivo
       if (m.status === 'finished' || m.status === 'live') return true
       if (m.status === 'locked') return true
       // Verifica se o jogo começou (menos de 1h para o início)
       const matchTime = new Date(`${m.match_date}T${m.match_time}:00`)
       const msUntilStart = matchTime.getTime() - now.getTime()
-      return msUntilStart <= 0
+      // Se falta menos de 1h e usuário não está na whitelist, bloqueia
+      return msUntilStart <= 0 && !isUserWhitelisted
     })
   })()
 
@@ -39,7 +50,7 @@ export default function GroupTableCard({ groupLabel, teams, existingBet, actualT
     if (groupLocked && editing) {
       setEditing(false)
     }
-  }, [groupLocked, editing])
+  }, [groupLocked, editing, isUserWhitelisted])
 
   const hasBet = !!existingBet && !editing
   const canSubmit = first && second && third && first !== second && first !== third && second !== third

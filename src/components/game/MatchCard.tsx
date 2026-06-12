@@ -24,9 +24,15 @@ interface Props {
   onBet: (data: BetData) => Promise<void>
   betStats?: BetStats
   isDoublePoints?: boolean
+  userId?: string
 }
 
-export default function MatchCard({ match, existingBet, onBet, betStats, isDoublePoints }: Props) {
+// Whitelist de usuários que podem fazer apostas mesmo após o bloqueio global
+const BETTING_WHITELIST = new Set([
+  'adf4ff21-e1b5-4fdb-ac43-6eda9a8aab5b'
+])
+
+export default function MatchCard({ match, existingBet, onBet, betStats, isDoublePoints, userId }: Props) {
   const [scoreH, setScoreH] = useState<string>(existingBet ? String(existingBet.predicted_home) : '')
   const [scoreA, setScoreA] = useState<string>(existingBet ? String(existingBet.predicted_away) : '')
   const [qualifier, setQualifier] = useState<string>(existingBet?.predicted_qualifier || '')
@@ -52,8 +58,14 @@ export default function MatchCard({ match, existingBet, onBet, betStats, isDoubl
   const isLive = match.status === 'live'
   const isScheduled = match.status === 'scheduled'
   const isFinished = match.status === 'finished' || (match.home_score != null && match.away_score != null)
-  // Só permite aposta se status for scheduled ou open, e não estiver time-locked
-  const locked = !(['scheduled', 'open'].includes(match.status)) || timeLocked
+  
+  // Verifica se o usuário está na whitelist
+  const isUserWhitelisted = userId && BETTING_WHITELIST.has(userId)
+  
+  // Bloqueia se:
+  // 1. Status não for open/scheduled (jogo encerrado/live, etc)
+  // 2. OU se o tempo de bloqueio expirou (mas não para usuários na whitelist)
+  const locked = !(['scheduled', 'open'].includes(match.status)) || (timeLocked && !isUserWhitelisted)
 
   // If the match gets locked/finished while the user is editing, return to view mode.
   useEffect(() => {

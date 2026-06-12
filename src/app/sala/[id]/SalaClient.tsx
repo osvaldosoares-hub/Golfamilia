@@ -1021,6 +1021,7 @@ async function handleBet(matchId: string, data: {
                                     onBet={(data) => handleBet(match.id, data)}
                                     betStats={betStats[match.id]}
                                     isDoublePoints={isDoublePointsMatch(match, room.code)}
+                                    userId={currentUser.id}
                                   />
                                 ))}
                               </div>
@@ -1071,6 +1072,7 @@ async function handleBet(matchId: string, data: {
                         existingBet={groupBets[label]}
                         actualTop3={groupTop3ByLabel[label]}
                         onBet={(data: { first_team: string; second_team: string; third_team: string }) => handleGroupBet(label, data)}
+                        userId={currentUser.id}
                       />
                     ))}
                   </div>
