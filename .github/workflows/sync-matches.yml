@@ -1,0 +1,20 @@
+name: Sync Matches
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'  # Roda a cada 3 horas
+  workflow_dispatch:  # Permite rodar manualmente no GitHub
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Trigger match sync
+        run: |
+          curl -X GET "${{ secrets.VERCEL_URL }}/api/matches/sync" \
+            -H "Content-Type: application/json" \
+            -w "\nStatus: %{http_code}\n"
+        continue-on-error: true
