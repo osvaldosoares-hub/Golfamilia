@@ -53,7 +53,7 @@ export default function MatchCard({ match, existingBet, onBet, betStats, isDoubl
     return () => clearInterval(interval)
   }, [match.match_date, match.match_time])
 
-  const timeLocked = timeLeft <= 0
+const timeLocked = timeLeft <= 0
   const hasBet = !!existingBet && !editing
   const isLive = match.status === 'live'
   const isScheduled = match.status === 'scheduled'
@@ -62,11 +62,10 @@ export default function MatchCard({ match, existingBet, onBet, betStats, isDoubl
   // Verifica se o usuário está na whitelist
   const isUserWhitelisted = userId && BETTING_WHITELIST.has(userId)
   
-  // Bloqueia apenas se:
-  // 1. Jogo foi finalizado
-  // 2. (removido: verificação de status de locked global)
-  // Agora permite apostas durante todo o período: antes, durante e depois
-  const locked = isFinished && !isLive  // Só bloqueia COMPLETAMENTE se terminou e NÃO está ao vivo
+// Bloqueia se:
+  // 1. Jogo foi finalizado (acabou)
+  // 2. Jogo está ao vivo (começou)
+  const locked = isFinished || isLive
 
   // If the match gets locked/finished while the user is editing, return to view mode.
   useEffect(() => {
@@ -370,8 +369,8 @@ const countdownLabel = (() => {
         {/* Qualifier + Bet amount */}
         {!locked && (
           <>
-            {/* Show bet summary if placed */}
-            {hasBet ? (
+{/* Show bet summary if placed */}
+            {hasBet && !locked ? (
               <div className="flex items-center justify-between pt-3 border-t border-white/[0.06]">
                 <div className="flex items-center gap-3">
                   <div className="text-xs text-muted">Palpite:</div>
@@ -387,6 +386,12 @@ const countdownLabel = (() => {
                 >
                   ✏️ Editar
                 </button>
+              </div>
+            ) : hasBet && locked ? (
+              <div className="pt-3 border-t border-white/[0.06] text-xs text-muted text-center">
+                <div className="text-xs text-muted">Palpite: {existingBet!.predicted_qualifier === 'DRAW' ? '🤝 Empate/Ambos' :
+                     existingBet!.predicted_qualifier === match.home_abbr ? `${match.home_flag} ${match.home_abbr}` :
+                     `${match.away_flag} ${match.away_abbr}`}</div>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="pt-3 border-t border-white/[0.06] space-y-3">
