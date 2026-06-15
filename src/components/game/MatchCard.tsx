@@ -62,10 +62,11 @@ export default function MatchCard({ match, existingBet, onBet, betStats, isDoubl
   // Verifica se o usuário está na whitelist
   const isUserWhitelisted = userId && BETTING_WHITELIST.has(userId)
   
-  // Bloqueia se:
-  // 1. Status não for open/scheduled (jogo encerrado/live, etc)
-  // 2. OU se o tempo de bloqueio expirou (mas não para usuários na whitelist)
-  const locked = !(['scheduled', 'open'].includes(match.status)) || (timeLocked && !isUserWhitelisted)
+  // Bloqueia apenas se:
+  // 1. Jogo foi finalizado
+  // 2. (removido: verificação de status de locked global)
+  // Agora permite apostas durante todo o período: antes, durante e depois
+  const locked = isFinished && !isLive  // Só bloqueia COMPLETAMENTE se terminou e NÃO está ao vivo
 
   // If the match gets locked/finished while the user is editing, return to view mode.
   useEffect(() => {
@@ -121,13 +122,22 @@ export default function MatchCard({ match, existingBet, onBet, betStats, isDoubl
     }
   }, [scoreH, scoreA])
 
-  // Format countdown string
+    // Format countdown string with hours, minutes, seconds
 const countdownLabel = (() => {
-    if (timeLeft <= 0) return null
-    if (timeLeft > 60 * 60 * 1000) return null // only show when < 1h
-    const mins = Math.floor(timeLeft / 60000)
+    // Sempre mostrar o countdown
+    const hours = Math.floor(timeLeft / (60 * 60 * 1000))
+    const mins = Math.floor((timeLeft % (60 * 60 * 1000)) / 60000)
     const secs = Math.floor((timeLeft % 60000) / 1000)
-    return `⏱ ${mins}:${String(secs).padStart(2, '0')}`
+    
+    if (timeLeft <= 0) {
+      return '🔒 Apostas encerradas'
+    } else if (hours > 0) {
+      return `⏱ ${hours}h ${mins}m para encerrar`
+    } else if (mins > 0) {
+      return `⏱ ${mins}m ${secs}s para encerrar`
+    } else {
+      return `⏱ ${secs}s para encerrar`
+    }
   })()
 
   // Skeleton loading state while submitting bet
@@ -183,8 +193,15 @@ const countdownLabel = (() => {
                 </div>
               </div>
             )}
-            {countdownLabel && !locked && (
-              <div className="text-xs font-bold px-2.5 py-1 rounded-full bg-gold/10 text-gold animate-pulse">
+            {countdownLabel && (
+              <div className={`text-xs font-bold px-3 py-1.5 rounded-lg border animate-pulse flex items-center gap-1.5 ${
+                timeLeft <= 5 * 60 * 1000 
+                  ? 'bg-red/20 border-red/50 text-red' 
+                  : timeLeft <= 30 * 60 * 1000
+                  ? 'bg-orange/20 border-orange/50 text-orange'
+                  : 'bg-gold/10 border-gold/30 text-gold'
+              }`}>
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
                 {countdownLabel}
               </div>
             )}
@@ -224,19 +241,23 @@ const countdownLabel = (() => {
           <div className="flex flex-col items-center gap-1">
             <div className="text-[10px] text-muted uppercase tracking-widest mb-1">Placar</div>
             <div className="flex items-center gap-2">
-              {/* Exibe placar real + palpite quando o jogo tem resultado (ao vivo ou finalizado) */}
-              {hasBet && (isFinished || isLive) && match.home_score != null && match.away_score != null ? (
+              {/* SEMPRE mostra o placar real quando jogo tem resultado (ao vivo ou finalizado) */}
+              {(isFinished || isLive) && match.home_score != null && match.away_score != null ? (
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-muted uppercase tracking-widest">A</span>
-                    <div className="w-10 h-10 flex items-center justify-center bg-dark-3 border border-green/20 rounded-lg font-mono text-lg font-bold text-green">
-                      {existingBet!.predicted_home}
+                  {/* Se tem aposta, mostra aposta acima do resultado */}
+                  {hasBet && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-muted uppercase tracking-widest">A</span>
+                      <div className="w-10 h-10 flex items-center justify-center bg-dark-3 border border-green/20 rounded-lg font-mono text-lg font-bold text-green">
+                        {existingBet!.predicted_home}
+                      </div>
+                      <span className="text-muted text-lg font-bold">:</span>
+                      <div className="w-10 h-10 flex items-center justify-center bg-dark-3 border border-green/20 rounded-lg font-mono text-lg font-bold text-green">
+                        {existingBet!.predicted_away}
+                      </div>
                     </div>
-                    <span className="text-muted text-lg font-bold">:</span>
-                    <div className="w-10 h-10 flex items-center justify-center bg-dark-3 border border-green/20 rounded-lg font-mono text-lg font-bold text-green">
-                      {existingBet!.predicted_away}
-                    </div>
-                  </div>
+                  )}
+                  {/* Mostra resultado SEMPRE (com ou sem aposta) */}
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-muted uppercase tracking-widest ">R</span>
                     <div className="w-10 h-10 flex items-center justify-center bg-dark-3 border border-gold/30 rounded-lg font-mono text-lg font-black text-gold">
@@ -394,15 +415,28 @@ const countdownLabel = (() => {
                   </div>
                 </div>
 
-                {/* Submit */}
-                <div className="flex items-center justify-end">
-                  <button
-                    type="submit"
-                    disabled={!canSubmit || loading}
-                    className="btn-primary text-sm py-2 px-4"
-                  >
-                    {loading ? '...' : editing ? 'Atualizar ✅' : 'Confirmar ✅'}
-                  </button>
+                {/* Submit + Time Warning */}
+                <div className="space-y-2">
+                  {timeLeft > 0 && timeLeft <= 30 * 60 * 1000 && (
+                    <div className={`text-xs p-3 rounded-lg border text-center font-bold ${
+                      timeLeft <= 5 * 60 * 1000
+                        ? 'bg-red/20 border-red/50 text-red animate-pulse'
+                        : timeLeft <= 15 * 60 * 1000
+                        ? 'bg-orange/20 border-orange/50 text-orange'
+                        : 'bg-gold/20 border-gold/50 text-gold'
+                    }`}>
+                      ⏰ Apostas encerram em {Math.max(0, Math.floor(timeLeft / 60000))}m {Math.floor((timeLeft % 60000) / 1000)}s
+                    </div>
+                  )}
+                  <div className="flex items-center justify-end">
+                    <button
+                      type="submit"
+                      disabled={!canSubmit || loading}
+                      className="btn-primary text-sm py-2 px-4"
+                    >
+                      {loading ? '...' : editing ? 'Atualizar ✅' : 'Confirmar ✅'}
+                    </button>
+                  </div>
                 </div>
               </form>
             )}

@@ -72,17 +72,14 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (!match) return NextResponse.json({ error: 'Jogo não encontrado' }, { status: 404 })
-  if (match.status !== 'open' && match.status !== 'scheduled') return NextResponse.json({ error: 'Apostas encerradas para este jogo' }, { status: 400 })
+  // ✅ LIBERADO: Permite apostas em qualquer status de jogo (antes, durante, depois)
+  // Removida restrição: if (match.status !== 'open' && match.status !== 'scheduled')
 
-  // Knockout bets are only available from June 27th onward.
-  if (match.phase !== 'group' && !isKnockoutBetReleased()) {
-    return NextResponse.json({ error: 'Palpites do mata-mata liberam em 27/06' }, { status: 400 })
-  }
+  // ✅ LIBERADO: Palpites de mata-mata agora disponíveis a qualquer momento
+  // Removida restrição: if (match.phase !== 'group' && !isKnockoutBetReleased())
 
-  // Block bets 1 hour before kickoff (exceto para whitelist)
-  if (isBetLocked(match.match_date, match.match_time) && !BETTING_WHITELIST.has(session.userId)) {
-    return NextResponse.json({ error: 'Apostas encerradas — menos de 1h para o início do jogo' }, { status: 400 })
-  }
+  // ✅ LIBERADO: Permite apostas mesmo dentro de 1h do jogo
+  // Removida restrição de tempo: if (isBetLocked(match.match_date, match.match_time) && !BETTING_WHITELIST.has(session.userId))
 
   // Check if existing bet
   const { data: existingBet } = await db

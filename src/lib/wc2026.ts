@@ -1,3 +1,13 @@
+// src/lib/wc2026.ts
+// Football-Data.org v4 integration for Copa do Mundo 2026
+// Maps Football-Data.org data to the app's DB schema
+
+import { getCompetitionMatches, type FootballDataMatch } from '@/services/footballDataApi'
+
+// WC = FIFA World Cup (Football-Data.org competition code)
+// For 2026 World Cup, this is the expected code
+export const WC_COMPETITION_CODE = 'WC'
+
 export interface ApiMatch {
   id: number
   match_number: number
@@ -16,13 +26,12 @@ export interface ApiMatch {
   stadium_city: string
 }
 
-export const WC_API_URL = 'https://api.wc2026api.com/matches'
+export const WC_API_URL = 'https://api.football-data.org/v4/competitions/WC/matches'
 
 import { checkRateLimit, incrementRateLimit } from './rate-limiter'
 
 /**
- * Faz fetch da API externa com rate limiting (máx 100 chamadas/dia).
- * Se excedeu o limite, retorna null e loga aviso.
+ * Fetches matches from Football-Data.org v4 API with rate limiting
  */
 export async function fetchFromWcApi(): Promise<ApiMatch[] | null> {
   const rateCheck = await checkRateLimit()
@@ -31,25 +40,98 @@ export async function fetchFromWcApi(): Promise<ApiMatch[] | null> {
     return null
   }
 
-  const token = process.env.WC2026_API_TOKEN
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  }
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
+  try {
+    const response = await getCompetitionMatches(WC_COMPETITION_CODE)
+    await incrementRateLimit()
 
-  const response = await fetch(WC_API_URL, { headers, cache: 'no-store' })
+    // Map Football-Data.org matches to ApiMatch format
+    const matches: ApiMatch[] = (response.matches || []).map((match: FootballDataMatch) => ({
+      id: match.id,
+      match_number: match.matchday || 0,
+      round: mapRoundFromStage(match.stage, match.group),
+      group_name: mapGroupName(match.group),
+      home_team: match.homeTeam?.name || null,
+      home_team_code: match.homeTeam?.tla || null,
+      away_team: match.awayTeam?.name || null,
+      away_team_code: match.awayTeam?.tla || null,
+      kickoff_utc: match.utcDate,
+      home_score: match.score?.fullTime?.home,
+      away_score: match.score?.fullTime?.away,
+      status: mapFootballDataStatus(match.status),
+      phase: match.status || null,
+      stadium: '',
+      stadium_city: '',
+    }))
 
-  if (!response.ok) {
-    console.error(`[WC2026API] Erro HTTP ${response.status}`)
+    return matches
+  } catch (error) {
+    console.error('[FootballData] Erro ao buscar dados:', error)
     return null
   }
+}
 
-  await incrementRateLimit()
+/**
+ * Maps Football-Data.org group name to just the letter
+ * e.g. "GROUP_H" -> "H", "GROUP_1" -> "1"
+ */
+function mapGroupName(group: string | null): string | null {
+  if (!group) return null
+  // "GROUP_H" -> "H", "GROUP_1" -> "1", "GROUP_A" -> "A"
+  const match = group.match(/^GROUP_([A-Z0-9]+)$/i)
+  if (match) return match[1].toUpperCase()
+  // If it's already a single letter like "H", return as-is
+  if (/^[A-Z0-9]$/i.test(group)) return group.toUpperCase()
+  // Fallback: return as-is
+  return group
+}
 
-  const data: ApiMatch[] = await response.json()
-  return data
+/**
+ * Maps Football-Data.org stage/group to the app's round format
+ */
+function mapRoundFromStage(stage: string, group: string | null): string {
+  const normalizedStage = (stage || '').toUpperCase()
+
+  // Group stage
+  if (normalizedStage === 'GROUP_STAGE' || normalizedStage === 'GROUP') {
+    return 'group'
+  }
+
+  // Preliminary/Preliminary round
+  if (normalizedStage?.includes('PRELIMINARY') || normalizedStage?.includes('QUALIFYING')) {
+    return 'group'
+  }
+
+  // Knockout stages
+  const mapping: Record<string, string> = {
+    'ROUND_OF_32': 'r32',
+    'ROUND_OF_16': 'r16',
+    'QUARTER_FINALS': 'qf',
+    'SEMI_FINALS': 'sf',
+    'THIRD_PLACE': 'third',
+    'FINAL': 'final',
+  }
+
+  return mapping[normalizedStage] || normalizedStage.toLowerCase()
+}
+
+/**
+ * Maps Football-Data.org match status to the app's status format
+ */
+function mapFootballDataStatus(status: string): string {
+  const normalized = (status || '').toUpperCase()
+
+  const mapping: Record<string, string> = {
+    'SCHEDULED': 'scheduled',
+    'TIMED': 'scheduled',
+    'IN_PLAY': 'live',
+    'PAUSED': 'live',
+    'FINISHED': 'completed',
+    'POSTPONED': 'scheduled',
+    'CANCELLED': 'scheduled',
+    'AWARDED': 'finished',
+  }
+
+  return mapping[normalized] || 'scheduled'
 }
 
 const FLAG_MAP: Record<string, string> = {
@@ -138,8 +220,8 @@ function normalizeTeamAbbr(rawAbbr: string | null | undefined, teamName: string 
 }
 
 function buildMatchCode(match: ApiMatch): string {
-  const phaseOrGroup = match.group_name || mapPhase(match.round).toUpperCase()
-  return `${phaseOrGroup}${match.match_number}`
+  // Usa o ID único da Football-Data.org para garantir match_code único
+  return `FD${match.id}`
 }
 
 export function mapApiMatchToDbRow(match: ApiMatch) {

@@ -1,5 +1,5 @@
 // src/lib/rate-limiter.ts
-// Rate limiter para API externa wc2026api.com - máx 100 chamadas/dia
+// Rate limiter genérico para APIs externas - máx 100 chamadas/dia
 
 import { supabaseAdmin } from './supabase'
 

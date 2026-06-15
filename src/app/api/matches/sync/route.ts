@@ -187,6 +187,11 @@ export async function GET(req: NextRequest) {
 
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Erro interno de sincronização'
-    return NextResponse.json({ error: message }, { status: 500 })
+    const stack = err instanceof Error ? err.stack : ''
+    console.error('[Sync] Erro completo:', { message, stack })
+    if (err instanceof Error && err.cause) {
+      console.error('[Sync] Causa:', err.cause)
+    }
+    return NextResponse.json({ error: message, detail: stack }, { status: 500 })
   }
 }

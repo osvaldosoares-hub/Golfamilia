@@ -89,11 +89,11 @@ export function parseMatchDateTime(matchDate: string, matchTime: string): Date {
 }
 
 /** Returns milliseconds until lockout.
- * Uses global lockout time (1h before first match) for ALL matches.
- * Negative = already locked. */
-export function msUntilLockout(_matchDate: string, _matchTime: string): number {
-  // All bets lock at the same time: 1 hour before first match (15:00 UTC / 3hrs Brasília)
-  return GLOBAL_LOCKOUT_TIME.getTime() - Date.now()
+ * Bloqueia apostas 30 minutos ANTES do início do jogo */
+export function msUntilLockout(matchDate: string, matchTime: string): number {
+  const kickoffTime = parseMatchDateTime(matchDate, matchTime)
+  const thirtyMinutesBeforeKickoff = new Date(kickoffTime.getTime() - 30 * 60 * 1000)
+  return thirtyMinutesBeforeKickoff.getTime() - Date.now()
 }
 
 /** Returns true if bets should be blocked (less than 1h before kickoff) */
