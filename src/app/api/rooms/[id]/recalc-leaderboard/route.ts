@@ -96,10 +96,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     newPointsByUser.set(bet.user_id, current + points)
   }
 
-  // ADICIONAR os novos pontos aos pontos existentes
+// ADICIONAR os novos pontos aos pontos existentes
   const results: { userId: string; previousPoints: number; newPoints: number; totalPoints: number }[] = []
 
-  for (const [userId, newPoints] of newPointsByUser.entries()) {
+  // Converter Map para array para evitar erro de iterator
+  const pointsArray = Array.from(newPointsByUser.entries())
+
+  for (const [userId, newPoints] of pointsArray) {
     // Pegar pontos atuais do membro
     const { data: member } = await db
       .from('room_members')
