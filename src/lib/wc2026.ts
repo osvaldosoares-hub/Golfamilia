@@ -18,6 +18,40 @@ export interface ApiMatch {
 
 export const WC_API_URL = 'https://api.wc2026api.com/matches'
 
+import { checkRateLimit, incrementRateLimit } from './rate-limiter'
+
+/**
+ * Faz fetch da API externa com rate limiting (máx 100 chamadas/dia).
+ * Se excedeu o limite, retorna null e loga aviso.
+ */
+export async function fetchFromWcApi(): Promise<ApiMatch[] | null> {
+  const rateCheck = await checkRateLimit()
+  if (!rateCheck.allowed) {
+    console.warn(`[RateLimiter] Limite diário excedido. Reset em ${rateCheck.resetAt}. Pulando fetch.`)
+    return null
+  }
+
+  const token = process.env.WC2026_API_TOKEN
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const response = await fetch(WC_API_URL, { headers, cache: 'no-store' })
+
+  if (!response.ok) {
+    console.error(`[WC2026API] Erro HTTP ${response.status}`)
+    return null
+  }
+
+  await incrementRateLimit()
+
+  const data: ApiMatch[] = await response.json()
+  return data
+}
+
 const FLAG_MAP: Record<string, string> = {
   MEX: '🇲🇽', KOR: '🇰🇷', RSA: '🇿🇦', CAN: '🇨🇦', USA: '🇺🇸',
   BRA: '🇧🇷', ARG: '🇦🇷', GER: '🇩🇪', FRA: '🇫🇷', ESP: '🇪🇸',

@@ -4,25 +4,18 @@
 
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { ApiMatch, mapApiMatchToDbRow, WC_API_URL } from '@/lib/wc2026'
-
-const WC_API_TOKEN = process.env.WC2026_API_TOKEN!
+import { mapApiMatchToDbRow, fetchFromWcApi } from '@/lib/wc2026'
 
 export async function GET() {
   try {
-    const res = await fetch(WC_API_URL, {
-      headers: { Authorization: `Bearer ${WC_API_TOKEN}` },
-      cache: 'no-store',
-    })
+    const apiMatches = await fetchFromWcApi()
 
-    if (!res.ok) {
+    if (!apiMatches) {
       return NextResponse.json(
-        { error: `API retornou ${res.status}` },
+        { error: 'Não foi possível obter dados da API externa (limite diário ou erro HTTP)' },
         { status: 502 }
       )
     }
-
-    const apiMatches: ApiMatch[] = await res.json()
     const db = supabaseAdmin()
 
     const rows = apiMatches.map(mapApiMatchToDbRow)
