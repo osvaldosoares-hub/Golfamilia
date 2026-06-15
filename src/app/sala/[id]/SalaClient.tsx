@@ -10,7 +10,7 @@ import GroupTableCard from '../../../components/game/GroupTableCard'
 import KnockoutBracket from '@/components/game/KnockoutBracket'
 import AchievementsCard from '@/components/ui/AchievementsCard'
 import type { User, Room, Match, Bet, LeaderboardEntry, GroupBet, GroupTeamInfo } from '@/types'
-import { formatCoins, getAvatarColor, getAvatarTextColor, isKnockoutBetReleased } from '@/lib/utils'
+import { formatCoins, getAvatarColor, getAvatarTextColor, isKnockoutBetReleased, parseMatchDateTime } from '@/lib/utils'
 
 // Lista de jogos que valem 2x pontos
 // Formato: "HOME_ABBR-AWAY_ABBR" (qualquer ordem)
@@ -88,7 +88,26 @@ const [roomBetAmount, setRoomBetAmount] = useState('')
   const [activeTab, setActiveTab] = useState<'matches' | 'knockout' | 'table'>('matches')
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const [groupRoundIndex, setGroupRoundIndex] = useState<Record<string, number>>({})
-  const [knockoutReleased, setKnockoutReleased] = useState(() => isKnockoutBetReleased())
+const [knockoutReleased, setKnockoutReleased] = useState(() => isKnockoutBetReleased())
+
+  // Find the next upcoming match that starts within 60 minutes
+  const nextUpcomingMatch = useMemo(() => {
+    const now = Date.now()
+    for (const match of allMatches) {
+      // Skip finished or live matches
+      if (match.status === 'finished' || match.status === 'live') continue
+      
+      const kickoffTime = parseMatchDateTime(match.match_date, match.match_time)
+      const msUntilKickoff = kickoffTime.getTime() - now
+
+      // Match starts within the next 60 minutes (and hasn't started yet)
+      if (msUntilKickoff > 0 && msUntilKickoff <= 60 * 60 * 1000) {
+        return match
+      }
+    }
+    return null
+  }, [allMatches])
+
   const [betStats, setBetStats] = useState<Record<string, {
     total: number
     counts: Record<string, number>
@@ -892,6 +911,27 @@ async function handleBet(matchId: string, data: {
                   📊 Tabela
                 </button>
               </div>
+
+{/* Next upcoming match banner */}
+              {nextUpcomingMatch && (
+                <div className="card relative overflow-hidden border-2 border-gold/30 animate-fade-up">
+                  <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-gold to-orange" />
+                  <div className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-gold text-sm font-bold">⚽ PRÓXIMO JOGO</span>
+                      <span className="text-xs text-muted">Começa em breve!</span>
+                    </div>
+                    <MatchCard
+                      match={nextUpcomingMatch}
+                      existingBet={bets[nextUpcomingMatch.id]}
+                      onBet={(data) => handleBet(nextUpcomingMatch.id, data)}
+                      betStats={betStats[nextUpcomingMatch.id]}
+                      isDoublePoints={isDoublePointsMatch(nextUpcomingMatch, room.code)}
+                      userId={currentUser.id}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Matches tab */}
               {activeTab === 'matches' && (

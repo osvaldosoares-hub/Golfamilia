@@ -59,6 +59,24 @@ export function isKnockoutBetReleased(date: Date = new Date()): boolean {
   return getDateNumberInSaoPaulo(date) >= KNOCKOUT_RELEASE_DATE_NUMBER
 }
 
+/** Get the next upcoming match that starts within the specified minutes */
+export function getNextUpcomingMatch(matches: any[], withinMinutes: number = 60): any | null {
+  const now = Date.now()
+  for (const match of matches) {
+    // Skip finished or live matches
+    if (match.status === 'finished' || match.status === 'live') continue
+    
+    const kickoffTime = parseMatchDateTime(match.match_date, match.match_time)
+    const msUntilKickoff = kickoffTime.getTime() - now
+
+    // Match starts within the specified minutes (and hasn't started yet)
+    if (msUntilKickoff > 0 && msUntilKickoff <= withinMinutes * 60 * 1000) {
+      return match
+    }
+  }
+  return null
+}
+
 export function getPhaseLabel(phase: string): string {
   const labels: Record<string, string> = {
     r32: '16 avos',
