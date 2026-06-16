@@ -90,9 +90,12 @@ const [roomBetAmount, setRoomBetAmount] = useState('')
   const [groupRoundIndex, setGroupRoundIndex] = useState<Record<string, number>>({})
 const [knockoutReleased, setKnockoutReleased] = useState(() => isKnockoutBetReleased())
 
-  // Find the next upcoming match that starts within 60 minutes
+  // Find the next upcoming match (closest in the future)
   const nextUpcomingMatch = useMemo(() => {
     const now = Date.now()
+    let closestMatch: Match | null = null
+    let closestMs = Infinity
+
     for (const match of allMatches) {
       // Skip finished or live matches
       if (match.status === 'finished' || match.status === 'live') continue
@@ -100,12 +103,14 @@ const [knockoutReleased, setKnockoutReleased] = useState(() => isKnockoutBetRele
       const kickoffTime = parseMatchDateTime(match.match_date, match.match_time)
       const msUntilKickoff = kickoffTime.getTime() - now
 
-      // Match starts within the next 60 minutes (and hasn't started yet)
-      if (msUntilKickoff > 0 && msUntilKickoff <= 60 * 60 * 1000) {
-        return match
+      // Match hasn't started yet and is closer than previous candidates
+      if (msUntilKickoff > 0 && msUntilKickoff < closestMs) {
+        closestMs = msUntilKickoff
+        closestMatch = match
       }
     }
-    return null
+
+    return closestMatch
   }, [allMatches])
 
   const [betStats, setBetStats] = useState<Record<string, {
@@ -922,13 +927,22 @@ async function handleBet(matchId: string, data: {
               </div>
 
 {/* Next upcoming match banner */}
-              {nextUpcomingMatch && (
+              {nextUpcomingMatch && (() => {
+                const msUntil = parseMatchDateTime(nextUpcomingMatch.match_date, nextUpcomingMatch.match_time).getTime() - Date.now()
+                const hoursUntil = msUntil / (1000 * 60 * 60)
+                const minutesUntil = msUntil / (1000 * 60)
+                let timeText = ''
+                if (minutesUntil <= 60) timeText = 'Começa em breve!'
+                else if (hoursUntil <= 24) timeText = `Começa em ~${Math.round(hoursUntil)}h`
+                else timeText = `Começa em ~${Math.round(hoursUntil / 24)}d`
+                
+                return (
                 <div className="card relative overflow-hidden border-2 border-gold/30 animate-fade-up">
                   <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-gold to-orange" />
                   <div className="p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-gold text-sm font-bold">⚽ PRÓXIMO JOGO</span>
-                      <span className="text-xs text-muted">Começa em breve!</span>
+                      <span className="text-xs text-muted">{timeText}</span>
                     </div>
                     <MatchCard
                       match={nextUpcomingMatch}
@@ -940,7 +954,8 @@ async function handleBet(matchId: string, data: {
                     />
                   </div>
                 </div>
-              )}
+                )
+              })()}
 
               {/* Matches tab */}
               {activeTab === 'matches' && (

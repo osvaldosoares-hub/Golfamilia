@@ -65,7 +65,8 @@ const timeLocked = timeLeft <= 0
 // Bloqueia se:
   // 1. Jogo foi finalizado (acabou)
   // 2. Jogo está ao vivo (começou)
-  const locked = isFinished || isLive
+  // 3. O horário do jogo já passou (timeLeft <= 0), mesmo que status não foi atualizado no banco
+  const locked = isFinished || isLive || timeLocked
 
   // If the match gets locked/finished while the user is editing, return to view mode.
   useEffect(() => {
