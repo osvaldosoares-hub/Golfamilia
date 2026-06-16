@@ -131,19 +131,33 @@ const [knockoutReleased, setKnockoutReleased] = useState(() => isKnockoutBetRele
       .catch(() => {})
   }, [room.id, bets])
 
+// States for preview calculation
+  const [previewLeaderboard, setPreviewLeaderboard] = useState<LeaderboardEntry[] | null>(null)
+
+  // Check if there are any live matches
+  const hasLiveMatches = useMemo(() => {
+    return allMatches.some(m => m.status === 'live')
+  }, [allMatches])
+
   // Poll leaderboard every 30 seconds for real-time ranking updates
   useEffect(() => {
     let isMounted = true
 
     async function fetchLeaderboard() {
-      try {
-        // Recalcula pontos com base nos placares atuais (jogos ao vivo ou finalizados)
-        await fetch(`/api/rooms/${room.id}/recalc-leaderboard`, {
-          method: 'POST',
-          cache: 'no-store',
-        })
-      } catch {
-        // Silencia erro
+      // Só calcula pontos reais se NÃO tiver jogo ao vivo
+      // Se tiver jogo ao vivo, usa apenas dados do banco (sem live)
+      const hasLiveRightNow = allMatches.some(m => m.status === 'live')
+      
+      if (!hasLiveRightNow) {
+        try {
+          // Recalcula pontos com base nos placares finais (só jogos finished)
+          await fetch(`/api/rooms/${room.id}/recalc-leaderboard`, {
+            method: 'POST',
+            cache: 'no-store',
+          })
+        } catch {
+          // Silencia erro
+        }
       }
 
       if (!isMounted) return
@@ -153,7 +167,22 @@ const [knockoutReleased, setKnockoutReleased] = useState(() => isKnockoutBetRele
         const json = await res.json()
         if (!isMounted) return
         if (json.data?.leaderboard) {
-          // Atualiza o leaderboard
+          // Se tem jogo ao vivo, calcula prévia sem salvar
+          if (hasLiveRightNow) {
+            // Busca prévia (pontos de jogos finalizados + projeção dos live)
+            try {
+              const previewRes = await fetch(`/api/rooms/${room.id}/recalc-leaderboard?preview=true`, { cache: 'no-store' })
+              const previewJson = await previewRes.json()
+              if (previewJson.data?.preview_leaderboard) {
+                setPreviewLeaderboard(previewJson.data.preview_leaderboard)
+              }
+            } catch {
+              setPreviewLeaderboard(null)
+            }
+          } else {
+            setPreviewLeaderboard(null)
+          }
+          // Usa leaderboard normal do banco
           setLeaderboard(json.data.leaderboard)
         }
         if (json.data?.my_user) {
@@ -174,7 +203,7 @@ const [knockoutReleased, setKnockoutReleased] = useState(() => isKnockoutBetRele
       isMounted = false
       clearInterval(interval)
     }
-  }, [room.id])
+  }, [room.id, allMatches])
 
   useEffect(() => {
     const interval = setInterval(() => {

@@ -167,9 +167,9 @@ async function recalcRoomTotals(db: SupabaseClient, roomIds: string[]) {
   for (const roomId of roomIds) {
     const { data: members } = await db
       .from('room_members')
-      .select('user_id')
+      .select('user_id, base_points') // ← troca total_points por base_points
       .eq('room_id', roomId)
-      .returns<RoomMemberRow[]>()
+      .returns<Array<RoomMemberRow & { base_points: number | null }>>()
 
     if (!members || members.length === 0) continue
 
@@ -177,16 +177,19 @@ async function recalcRoomTotals(db: SupabaseClient, roomIds: string[]) {
       .from('bets')
       .select('user_id, points_earned')
       .eq('room_id', roomId)
+      .not('points_earned', 'is', null)
       .returns<BetPointsRow[]>()
 
     const { data: groupPoints } = await db
       .from('group_bets')
       .select('user_id, points_earned')
       .eq('room_id', roomId)
+      .not('points_earned', 'is', null)
       .returns<GroupBetPointsRow[]>()
 
     const totals = new Map<string, number>()
-    members.forEach((member) => totals.set(member.user_id, 0))
+    // ← inicializa já com o base_points de cada membro
+    members.forEach((member) => totals.set(member.user_id, member.base_points ?? 0))
 
     betPoints?.forEach((row) => {
       if (row.points_earned == null) return
