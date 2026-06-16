@@ -40,11 +40,11 @@ export default function MatchCard({ match, existingBet, onBet, betStats, isDoubl
   const [editing, setEditing] = useState(false)
   const [timeLeft, setTimeLeft] = useState<number>(() => msUntilLockout(match.match_date, match.match_time))
 
-  // Countdown timer — update every second when < 2 hours
+// Countdown timer — update every second when < 1 hour
   useEffect(() => {
     const ms = msUntilLockout(match.match_date, match.match_time)
     setTimeLeft(ms)
-    if (ms <= 0 || ms > 2 * 60 * 60 * 1000) return
+    if (ms <= 0 || ms > 60 * 60 * 1000) return
     const interval = setInterval(() => {
       const remaining = msUntilLockout(match.match_date, match.match_time)
       setTimeLeft(remaining)
@@ -202,16 +202,18 @@ const countdownLabel = (() => {
               <div className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue/10 text-blue flex items-center gap-1">
                 <span>📅 Marcado</span>
               </div>
-            ) : locked || timeLeft <= 0 ? (
+) : locked || timeLeft <= 0 ? (
               <div className="text-xs font-bold px-2.5 py-1 rounded-full bg-red/10 text-red flex items-center gap-1">
                 <span>🔒</span>
                 <span>Terminado</span>
               </div>
-            ) : timeLeft > 0 && timeLeft <= 30 * 60 * 1000 ? (
+) : timeLeft > 0 && timeLeft <= 60 * 60 * 1000 ? (
               <div className={`text-xs font-bold px-3 py-1.5 rounded-lg border animate-pulse flex items-center gap-1.5 ${
                 timeLeft <= 5 * 60 * 1000 
                   ? 'bg-red/20 border-red/50 text-red' 
-                  : 'bg-orange/20 border-orange/50 text-orange'
+                  : timeLeft <= 30 * 60 * 1000
+                  ? 'bg-orange/20 border-orange/50 text-orange'
+                  : 'bg-gold/20 border-gold/50 text-gold'
               }`}>
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
                 {countdownLabel}
