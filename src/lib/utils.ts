@@ -100,14 +100,20 @@ const GLOBAL_LOCKOUT_TIME = new Date('2026-06-11T18:00:00Z')
 
 /** Extrai componentes de data e hora de strings como "11 Jun" e "16:00" */
 // Os dados no banco já estão em horário Brasília (convertidos pelo seed)
-function extractTimeComponents(matchDate: string, matchTime: string): { day: number; monthIndex: number; hours: number; minutes: number } {
+function extractTimeComponents(matchDate: string, matchTime: string) {
   const [dayStr, monthStr] = matchDate.split(' ')
   const [hoursStr, minutesStr] = matchTime.split(':')
-  
+
+  let hours = parseInt(hoursStr, 10) - 3
+
+  if (hours < 0) {
+    hours += 24
+  }
+
   return {
     day: parseInt(dayStr, 10),
     monthIndex: MONTH_MAP[monthStr] ?? 0,
-    hours: parseInt(hoursStr, 10),
+    hours,
     minutes: parseInt(minutesStr, 10)
   }
 }
