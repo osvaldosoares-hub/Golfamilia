@@ -98,23 +98,46 @@ const MONTH_MAP: Record<string, number> = {
 // Global lockout: 15:00 today (São Paulo time) = 18:00 UTC
 const GLOBAL_LOCKOUT_TIME = new Date('2026-06-11T18:00:00Z')
 
-/** Parse match_date ("11 Jun") + match_time ("19:00") into a UTC Date for 2026 */
-export function parseMatchDateTime(matchDate: string, matchTime: string): Date {
+/** Extrai componentes de data e hora de strings como "11 Jun" e "16:00" */
+// Os dados no banco já estão em horário Brasília (convertidos pelo seed)
+function extractTimeComponents(matchDate: string, matchTime: string): { day: number; monthIndex: number; hours: number; minutes: number } {
   const [dayStr, monthStr] = matchDate.split(' ')
-  const [hourStr, minStr] = matchTime.split(':')
-  const month = MONTH_MAP[monthStr] ?? 0
-  return new Date(Date.UTC(2026, month, parseInt(dayStr), parseInt(hourStr), parseInt(minStr)))
+  const [hoursStr, minutesStr] = matchTime.split(':')
+  
+  return {
+    day: parseInt(dayStr, 10),
+    monthIndex: MONTH_MAP[monthStr] ?? 0,
+    hours: parseInt(hoursStr, 10),
+    minutes: parseInt(minutesStr, 10)
+  }
+}
+
+/** Formata horário do jogo para display em horário brasileiro */
+// Os dados no banco já estão em Brasília, não precisa converter
+export function formatMatchTimeForDisplay(matchDate: string, matchTime: string): string {
+  const { day, monthIndex, hours, minutes } = extractTimeComponents(matchDate, matchTime)
+  const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+  const hourStr = String(hours).padStart(2, '0')
+  const minStr = String(minutes).padStart(2, '0')
+  return `${day} ${months[monthIndex]} ${hourStr}:${minStr}`
+}
+
+/** Parse match_date ("11 Jun") + match_time ("16:00") para Date */
+// Os dados no banco já estão em Brasília
+export function parseMatchDateTime(matchDate: string, matchTime: string): Date {
+  const { day, monthIndex, hours, minutes } = extractTimeComponents(matchDate, matchTime)
+  // Criar data usando horário de Brasília (ano fixo 2026)
+  return new Date(2026, monthIndex, day, hours, minutes)
 }
 
 /** Returns milliseconds until lockout.
- * Bloqueia apostas 30 minutos ANTES do início do jogo */
+// As apostas só encerram na hora do início do jogo */
 export function msUntilLockout(matchDate: string, matchTime: string): number {
   const kickoffTime = parseMatchDateTime(matchDate, matchTime)
-  const thirtyMinutesBeforeKickoff = new Date(kickoffTime.getTime() - 30 * 60 * 1000)
-  return thirtyMinutesBeforeKickoff.getTime() - Date.now()
+  return kickoffTime.getTime() - Date.now()
 }
 
-/** Returns true if bets should be blocked (less than 1h before kickoff) */
+/** Returns true if bets should be blocked (at match time) */
 export function isBetLocked(matchDate: string, matchTime: string): boolean {
   return msUntilLockout(matchDate, matchTime) <= 0
 }

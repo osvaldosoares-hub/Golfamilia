@@ -139,25 +139,19 @@ const [knockoutReleased, setKnockoutReleased] = useState(() => isKnockoutBetRele
     return allMatches.some(m => m.status === 'live')
   }, [allMatches])
 
-  // Poll leaderboard every 30 seconds for real-time ranking updates
+// Poll leaderboard every 10 seconds for real-time ranking updates
   useEffect(() => {
     let isMounted = true
 
     async function fetchLeaderboard() {
-      // Só calcula pontos reais se NÃO tiver jogo ao vivo
-      // Se tiver jogo ao vivo, usa apenas dados do banco (sem live)
-      const hasLiveRightNow = allMatches.some(m => m.status === 'live')
-      
-      if (!hasLiveRightNow) {
-        try {
-          // Recalcula pontos com base nos placares finais (só jogos finished)
-          await fetch(`/api/rooms/${room.id}/recalc-leaderboard`, {
-            method: 'POST',
-            cache: 'no-store',
-          })
-        } catch {
-          // Silencia erro
-        }
+      // Recalcula pontos SEMPRE (para detectar mudanças manuais no BD)
+      try {
+        await fetch(`/api/rooms/${room.id}/recalc-leaderboard`, {
+          method: 'POST',
+          cache: 'no-store',
+        })
+      } catch {
+        // Silencia erro
       }
 
       if (!isMounted) return
@@ -167,22 +161,6 @@ const [knockoutReleased, setKnockoutReleased] = useState(() => isKnockoutBetRele
         const json = await res.json()
         if (!isMounted) return
         if (json.data?.leaderboard) {
-          // Se tem jogo ao vivo, calcula prévia sem salvar
-          if (hasLiveRightNow) {
-            // Busca prévia (pontos de jogos finalizados + projeção dos live)
-            try {
-              const previewRes = await fetch(`/api/rooms/${room.id}/recalc-leaderboard?preview=true`, { cache: 'no-store' })
-              const previewJson = await previewRes.json()
-              if (previewJson.data?.preview_leaderboard) {
-                setPreviewLeaderboard(previewJson.data.preview_leaderboard)
-              }
-            } catch {
-              setPreviewLeaderboard(null)
-            }
-          } else {
-            setPreviewLeaderboard(null)
-          }
-          // Usa leaderboard normal do banco
           setLeaderboard(json.data.leaderboard)
         }
         if (json.data?.my_user) {
@@ -197,7 +175,8 @@ const [knockoutReleased, setKnockoutReleased] = useState(() => isKnockoutBetRele
     }
 
     fetchLeaderboard()
-    const interval = setInterval(fetchLeaderboard, 30 * 1000)
+    // Poll mais frequente: a cada 10 segundos para captar mudanças manuais no BD
+    const interval = setInterval(fetchLeaderboard, 10 * 1000)
 
     return () => {
       isMounted = false
@@ -236,10 +215,11 @@ const [knockoutReleased, setKnockoutReleased] = useState(() => isKnockoutBetRele
       }
     }
 
-    // Executa imediatamente também
+// Executa imediatamente também
     syncAndFetch()
 
-    const interval = setInterval(syncAndFetch, 90 * 1000)
+    // Sync mais frequente: a cada 30 segundos para captar mudanças da API externa
+    const interval = setInterval(syncAndFetch, 30 * 1000)
 
     return () => {
       isMounted = false

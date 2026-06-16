@@ -228,7 +228,11 @@ function buildMatchCode(match: ApiMatch): string {
 }
 
 export function mapApiMatchToDbRow(match: ApiMatch) {
+  // Converter UTC para horário Brasília (UTC-3)
   const kickoff = new Date(match.kickoff_utc)
+  // Ajustar para fuso horário brasileiro (UTC-3)
+  kickoff.setHours(kickoff.getHours() - 3)
+  
   const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
   const matchDate = `${kickoff.getUTCDate()} ${months[kickoff.getUTCMonth()]}`
   const matchTime = `${String(kickoff.getUTCHours()).padStart(2, '0')}:${String(kickoff.getUTCMinutes()).padStart(2, '0')}`
