@@ -92,40 +92,66 @@ export function getPhaseLabel(phase: string): string {
 
 const MONTH_MAP: Record<string, number> = {
   Jan: 0, Fev: 1, Mar: 2, Abr: 3, Mai: 4, Jun: 5,
-  Jul: 6, Ago: 7, Set: 8, Out: 9, Nov: 10, Dez: 11,
+  Jul: 6, Ago: 7, Set: 8, Out: 9, Nov: 10, Dez: 11
 }
-
 // Global lockout: 15:00 today (São Paulo time) = 18:00 UTC
 const GLOBAL_LOCKOUT_TIME = new Date('2026-06-11T18:00:00Z')
 
+const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+
 /** Extrai componentes de data e hora de strings como "11 Jun" e "16:00" */
-// Os dados no banco já estão em horário Brasília (convertidos pelo seed)
+// Os dados no banco já estão em horário Brasília (corrigidos manualmente)
 function extractTimeComponents(matchDate: string, matchTime: string) {
   const [dayStr, monthStr] = matchDate.split(' ')
   const [hoursStr, minutesStr] = matchTime.split(':')
 
-  let hours = parseInt(hoursStr, 10) - 3
-
-  if (hours < 0) {
-    hours += 24
-  }
-
   return {
     day: parseInt(dayStr, 10),
     monthIndex: MONTH_MAP[monthStr] ?? 0,
-    hours,
+    hours: parseInt(hoursStr, 10),
     minutes: parseInt(minutesStr, 10)
   }
 }
+function buildUtcDate(matchDate: string, matchTime: string, year = new Date().getFullYear()): Date {
+  const [dayStr, monthStr] = matchDate.split(' ')
+  const [hoursStr, minutesStr] = matchTime.split(':')
+
+  return new Date(Date.UTC(
+    year,
+    MONTH_MAP[monthStr] ?? 0,
+    parseInt(dayStr, 10),
+    parseInt(hoursStr, 10),
+    parseInt(minutesStr, 10)
+  ))
+}
+
+/** Formata horário do jogo para display
+    parseInt(hoursStr, 10),
+    parseInt(minutesStr, 10)
+  ))
+}
 
 /** Formata horário do jogo para display em horário brasileiro */
-// Os dados no banco já estão em Brasília, não precisa converter
+// Os dados no banco estão em UTC — convertendo para America/Sao_Paulo
 export function formatMatchTimeForDisplay(matchDate: string, matchTime: string): string {
-  const { day, monthIndex, hours, minutes } = extractTimeComponents(matchDate, matchTime)
-  const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-  const hourStr = String(hours).padStart(2, '0')
-  const minStr = String(minutes).padStart(2, '0')
-  return `${day} ${months[monthIndex]} ${hourStr}:${minStr}`
+  const utcDate = buildUtcDate(matchDate, matchTime)
+
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    day: 'numeric',
+    month: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  })
+
+  const parts = formatter.formatToParts(utcDate)
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? ''
+
+  const day = parseInt(get('day'), 10)
+  const monthIndex = parseInt(get('month'), 10) - 1
+
+  return `${day} ${months[monthIndex]} ${get('hour')}:${get('minute')}`
 }
 
 /** Parse match_date ("11 Jun") + match_time ("16:00") para Date */
