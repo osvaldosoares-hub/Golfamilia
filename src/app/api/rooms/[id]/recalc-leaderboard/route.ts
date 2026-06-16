@@ -59,8 +59,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const matchMap = new Map<string, typeof matches[0]>()
   matches.forEach(m => matchMap.set(m.id, m))
 
-// Calcular pontos novos por usuário
-  const newPointsByUser = new Map<string, number>()
+  // Calcular pontos por usuário
+  const pointsByUser = new Map<string, number>()
 
   for (const bet of bets) {
     const match = matchMap.get(bet.match_id)
@@ -92,42 +92,25 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       points = room.pts_winner
     }
 
-    const current = newPointsByUser.get(bet.user_id) || 0
-    newPointsByUser.set(bet.user_id, current + points)
+    const current = pointsByUser.get(bet.user_id) || 0
+    pointsByUser.set(bet.user_id, current + points)
   }
 
-// ADICIONAR os novos pontos aos pontos existentes
-  const results: { userId: string; previousPoints: number; newPoints: number; totalPoints: number }[] = []
-
-  // Converter Map para array para evitar erro de iterator
-  const pointsArray = Array.from(newPointsByUser.entries())
-
-  for (const [userId, newPoints] of pointsArray) {
-    // Pegar pontos atuais do membro
-    const { data: member } = await db
-      .from('room_members')
-      .select('total_points')
-      .eq('room_id', roomId)
-      .eq('user_id', userId)
-      .single()
-
-    const previousPoints = member?.total_points || 0
-    const totalPoints = previousPoints + newPoints
-
-    // Atualizar com os novos pontos (ADICIONANDO, não substituindo)
-    await db
-      .from('room_members')
-      .update({ total_points: totalPoints })
-      .eq('room_id', roomId)
-      .eq('user_id', userId)
-
-    results.push({ userId, previousPoints, newPoints, totalPoints })
-  }
+  // Atualizar total_points de cada membro
+  await Promise.all(
+    Array.from(pointsByUser.entries()).map(async ([userId, points]) => {
+      await db
+        .from('room_members')
+        .update({ total_points: points })
+        .eq('room_id', roomId)
+        .eq('user_id', userId)
+    })
+  )
 
   return NextResponse.json({
     data: {
-      members_updated: results.length,
-      users_updated: results,
+      recalculated: pointsByUser.size,
+      users_updated: Array.from(pointsByUser.entries()).map(([userId, pts]) => ({ userId, pts })),
     }
   })
 }
