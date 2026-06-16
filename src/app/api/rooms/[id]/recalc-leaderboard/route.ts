@@ -98,14 +98,24 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   // Atualizar total_points de cada membro
   await Promise.all(
-    Array.from(pointsByUser.entries()).map(async ([userId, points]) => {
-      await db
-        .from('room_members')
-        .update({ total_points: points })
-        .eq('room_id', roomId)
-        .eq('user_id', userId)
-    })
-  )
+  Array.from(pointsByUser.entries()).map(async ([userId, points=0]) => {
+    // Busca o base_points do membro
+    const { data: member } = await db
+      .from('room_members')
+      .select('base_points')
+      .eq('room_id', roomId)
+      .eq('user_id', userId)
+      .single()
+
+    const base = member?.base_points ?? 0
+
+    await db
+      .from('room_members')
+      .update({ total_points: base + points }) // ← soma histórico + novo
+      .eq('room_id', roomId)
+      .eq('user_id', userId)
+  })
+)
 
   return NextResponse.json({
     data: {
