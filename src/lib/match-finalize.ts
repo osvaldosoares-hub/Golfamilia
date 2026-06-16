@@ -302,9 +302,12 @@ export async function finalizeMatchAndScore(
       points = room.pts_winner
     }
 
-    // Aplicar multiplicador 2x para jogos especiais
-    if (isDoublePointsMatch(match.home_abbr, match.away_abbr, room.code)) {
+// Aplicar multiplicador 2x para jogos especiais
+    const is2x = isDoublePointsMatch(match.home_abbr, match.away_abbr, room.code)
+    console.log(`[DEBUG] Jogo ${match.home_abbr}-${match.away_abbr}, Sala ${room.code}, 2x: ${is2x}, pts antes: ${points}`)
+    if (is2x) {
       points = points * 2
+      console.log(`[DEBUG] pts depois do 2x: ${points}`)
     }
 
     await db

@@ -4,6 +4,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
 
+// Jogos que valem 2x pontos
+const DOUBLE_POINTS_MATCHES = [
+  'COD-UZB', 'UZB-COD', 'CPV-KSA', 'KSA-CPV',
+  'IRN-NZL', 'NZL-IRN', 'AUT-JOR', 'JOR-AUT',
+  'JOR-ALG', 'ALG-JOR', 'BIH-QAT', 'QAT-BIH',
+  'USA-AUS', 'AUS-USA',
+]
+
+function isDoublePointsMatch(homeAbbr: string, awayAbbr: string): boolean {
+  const code = `${homeAbbr}-${awayAbbr}`
+  return DOUBLE_POINTS_MATCHES.includes(code)
+}
+
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
@@ -24,7 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // Pegar configuração de pontos da sala
   const { data: room } = await db
     .from('rooms')
-    .select('id, pts_exact, pts_winner')
+    .select('id, code, pts_exact, pts_winner')
     .eq('id', roomId)
     .single()
 
@@ -85,11 +98,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       else predictedQualifier = 'DRAW'
     }
 
-    let points = 0
+let points = 0
     if (predictedHome === realHome && predictedAway === realAway) {
       points = room.pts_exact + room.pts_winner
     } else if (predictedQualifier === realQualifier) {
       points = room.pts_winner
+    }
+
+    // Aplicar 2x se for jogo especial E sala FY4CXF
+    if (isDoublePointsMatch(match.home_abbr, match.away_abbr) && room.code === 'FY4CXF') {
+      console.log(`[DEBUG] 2x aplicado: ${match.home_abbr}-${match.away_abbr}, pts antes: ${points}`)
+      points = points * 2
+      console.log(`[DEBUG] pts depois do 2x: ${points}`)
     }
 
     const current = pointsByUser.get(bet.user_id) || 0

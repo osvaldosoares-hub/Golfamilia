@@ -125,7 +125,7 @@ function mapFootballDataStatus(status: string): string {
     'TIMED': 'scheduled',
     'IN_PLAY': 'live',
     'PAUSED': 'live',
-    'FINISHED': 'completed',
+    'FINISHED': 'finished',
     'POSTPONED': 'scheduled',
     'CANCELLED': 'scheduled',
     'AWARDED': 'finished',
@@ -197,13 +197,16 @@ export function mapStatus(status: string, phase?: string | null): string {
   const normalizedStatus = (status || '').toLowerCase().trim()
 
   // Se o jogo está "live" mas a fase é "FT" (Full Time), consideramos como finished
-  if (normalizedStatus === 'live' && phase && ['FT', 'ET', 'PEN'].includes(phase.toUpperCase())) {
+  // Apenas se a fase for exatamente FT (Full Time) - não ET (Extra Time) ou PEN (Pênaltis)
+  // porque esses ainda podem ter emoção!
+  if (normalizedStatus === 'live' && phase && phase.toUpperCase() === 'FT') {
     return 'finished'
   }
 
   const mapping: Record<string, string> = {
     scheduled: 'scheduled',
     live: 'live',
+    finished: 'finished',
     completed: 'finished',
     postponed: 'scheduled',
   }

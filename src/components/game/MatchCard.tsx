@@ -192,36 +192,39 @@ const countdownLabel = (() => {
                 </div>
               </div>
             )}
-            {countdownLabel && (
-              <div className={`text-xs font-bold px-3 py-1.5 rounded-lg border animate-pulse flex items-center gap-1.5 ${
-                timeLeft <= 5 * 60 * 1000 
-                  ? 'bg-red/20 border-red/50 text-red' 
-                  : timeLeft <= 30 * 60 * 1000
-                  ? 'bg-orange/20 border-orange/50 text-orange'
-                  : 'bg-gold/10 border-gold/30 text-gold'
-              }`}>
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                {countdownLabel}
-              </div>
-            )}
-            {isLive && (
+{/* Status Badge: AO VIVO, Marcado, Encerrado/Terminado */}
+            {isLive ? (
               <div className="text-xs font-bold px-2.5 py-1 rounded-full bg-red/10 text-red animate-pulse flex items-center gap-1">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-red animate-ping" />
                 <span>🔴 AO VIVO{match.match_phase ? ` · ${match.match_phase}` : ''}</span>
               </div>
-            )}
-            {isScheduled && !isLive && (
-              <div className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue/10 text-blue">
-                📅 Marcado
+            ) : isScheduled && !isLive ? (
+              <div className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue/10 text-blue flex items-center gap-1">
+                <span>📅 Marcado</span>
               </div>
-            )}
-            {!isLive && !isScheduled && (
-              <div className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                locked ? 'bg-red/10 text-red' :
-                hasBet ? 'bg-green/10 text-green' :
-                'bg-white/[0.06] text-muted'
+            ) : locked || timeLeft <= 0 ? (
+              <div className="text-xs font-bold px-2.5 py-1 rounded-full bg-red/10 text-red flex items-center gap-1">
+                <span>🔒</span>
+                <span>Terminado</span>
+              </div>
+            ) : timeLeft > 0 && timeLeft <= 30 * 60 * 1000 ? (
+              <div className={`text-xs font-bold px-3 py-1.5 rounded-lg border animate-pulse flex items-center gap-1.5 ${
+                timeLeft <= 5 * 60 * 1000 
+                  ? 'bg-red/20 border-red/50 text-red' 
+                  : 'bg-orange/20 border-orange/50 text-orange'
               }`}>
-                {locked ? '🔒 Encerrado' : hasBet ? '✅ Aposta feita' : '🕐 Aberto'}
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                {countdownLabel}
+              </div>
+            ) : hasBet ? (
+              <div className="text-xs font-bold px-2.5 py-1 rounded-full bg-green/10 text-green flex items-center gap-1">
+                <span>✅</span>
+                <span>Aposta feita</span>
+              </div>
+            ) : (
+              <div className="text-xs font-bold px-2.5 py-1 rounded-full bg-white/[0.06] text-muted flex items-center gap-1">
+                <span>🕐</span>
+                <span>Aberto</span>
               </div>
             )}
           </div>

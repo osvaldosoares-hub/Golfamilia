@@ -40,17 +40,18 @@ export async function POST(req: NextRequest) {
   try {
     let query = db
       .from('matches')
-      .select('id, home_score, away_score')
-      .eq('status', 'finished')
+      .select('id, home_score, away_score, status')
       .not('home_score', 'is', null)
       .not('away_score', 'is', null)
 
+    // Se especifica match_id ou group_label, permite processar mesmo se status não for 'finished'
     if (match_id) {
       query = query.eq('id', match_id)
-    }
-
-    if (group_label) {
+    } else if (group_label) {
       query = query.eq('phase', 'group').eq('group_label', group_label)
+    } else {
+      // Processa TODOS os jogos que têm placar, independentemente do status (acabado ou não)
+      // Isso permite recalcular pontos quando placares são alterados manualmente no BD
     }
 
     const { data: matches, error } = await query.returns<RecalcMatchRow[]>()
