@@ -17,6 +17,8 @@ const nextConfig = {
       allowedOrigins: getAllowedOrigins(),
     },
   },
+  // Aumenta o timeout estático para evitar timeout em cold starts
+  staticPageGenerationTimeout: 120,
 }
 
 module.exports = nextConfig
