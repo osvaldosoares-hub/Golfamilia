@@ -200,17 +200,9 @@ const [knockoutReleased, setKnockoutReleased] = useState(() => isKnockoutBetRele
   useEffect(() => {
     let isMounted = true
 
-    async function syncAndFetch() {
-      try {
-        // Primeiro sincroniza com a API externa
-        await fetch('/api/matches/sync', { cache: 'no-store' })
-      } catch {
-        // Silencia erro de sync (pode ser falta de autorização)
-      }
-
+    async function fetchMatches() {
       if (!isMounted) return
 
-      // Depois busca os matches atualizados
       try {
         const res = await fetch('/api/matches', { cache: 'no-store' })
         const json = await res.json()
@@ -220,11 +212,11 @@ const [knockoutReleased, setKnockoutReleased] = useState(() => isKnockoutBetRele
       }
     }
 
-// Executa imediatamente também
-    syncAndFetch()
+    // Busca os matches imediatamente
+    fetchMatches()
 
-    // Sync mais frequente: a cada 30 segundos para captar mudanças da API externa
-    const interval = setInterval(syncAndFetch, 30 * 1000)
+    // Poll a cada 30 segundos para atualizar os matches
+    const interval = setInterval(fetchMatches, 30 * 1000)
 
     return () => {
       isMounted = false
