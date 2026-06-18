@@ -3,11 +3,13 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const db = supabaseAdmin()
 
-    // Deleta jogos que não começam com "FD" (são os antigos do seed manual)
+    // Deleta jogos que não começam com "FD"
     const { data: deleted, error } = await db
       .from('matches')
       .delete()

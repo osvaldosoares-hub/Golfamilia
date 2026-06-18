@@ -4,6 +4,8 @@ import { getSession } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
 import { isBetLocked } from '@/lib/utils'
 
+export const dynamic = 'force-dynamic'
+
 // Whitelist de usuários que podem fazer apostas mesmo após o bloqueio global
 const BETTING_WHITELIST = new Set([
   'adf4ff21-e1b5-4fdb-ac43-6eda9a8aab5b'
@@ -65,7 +67,7 @@ export async function POST(req: NextRequest) {
 
   if (!member) return NextResponse.json({ error: 'Não é membro desta sala' }, { status: 403 })
 
-  // Check if group still has open/scheduled matches (can't bet after group is locked)
+  // Check if group still has open/scheduled matches
   const { data: availableMatches } = await db
     .from('matches')
     .select('id, match_date, match_time')
@@ -80,13 +82,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Apostas encerradas para este grupo' }, { status: 400 })
   }
 
-  // Block group bets 1 hour before the first match in the group (exceto para whitelist)
+  // Block group bets 1 hour before the first match in the group
   const firstMatch = availableMatches[0]
   if (isBetLocked(firstMatch.match_date, firstMatch.match_time) && !BETTING_WHITELIST.has(session.userId)) {
     return NextResponse.json({ error: 'Apostas encerradas — menos de 1h para o primeiro jogo do grupo' }, { status: 400 })
   }
 
-  // Upsert
   const { data: existing } = await db
     .from('group_bets')
     .select('id')

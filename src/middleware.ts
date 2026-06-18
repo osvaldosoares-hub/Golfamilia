@@ -3,24 +3,33 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth'
 
-const PUBLIC_PATHS = ['/login', '/register', '/api/auth/login', '/api/auth/register', '/api/auth/logout', '/api/matches/finalize', '/api/matches/sync', '/api/matches/recalculate', '/api/matches/fix-times', '/api/seed', '/api/matches/cleanup', '/api/matches/reset-bets']
+const PUBLIC_PATHS = [
+  '/login', '/register',
+  '/api/auth/login', '/api/auth/register', '/api/auth/logout',
+  '/api/matches/finalize', '/api/matches/sync',
+  '/api/matches/recalculate', '/api/matches/fix-times',
+  '/api/seed', '/api/matches/cleanup', '/api/matches/reset-bets',
+  '/_next/static', '/_next/image', '/favicon',
+]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Allow public paths
+  // Check public paths first (fast path)
   if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
     return NextResponse.next()
   }
 
-  // Allow static files
-  if (pathname.startsWith('/_next') || pathname.startsWith('/favicon')) {
-    return NextResponse.next()
-  }
-
   // Protected routes — require session
-  const session = await getSessionFromRequest(request)
-  if (!session) {
+  try {
+    const session = await getSessionFromRequest(request)
+    if (!session) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+  } catch {
+    // Se der erro ao verificar sessão, redireciona para login
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
@@ -30,5 +39,13 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ],
 }

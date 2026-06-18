@@ -1,12 +1,12 @@
 // src/app/api/matches/fix-times/route.ts
-// Corrige horários subtraindo 3 horas (UTC -> Brasília)
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   const db = supabaseAdmin()
 
-  // Pegar todos os jogos com hora
   const { data: matches, error: fetchError } = await db
     .from('matches')
     .select('id, match_date, match_time')
@@ -31,12 +31,9 @@ export async function POST(req: NextRequest) {
     const month = months[monthName]
     const [hours, minutes] = match.match_time.split(':').map(Number)
 
-    // Criar data em UTC
     const date = new Date()
     date.setUTCHours(hours, minutes, 0, 0)
-    // Ajustar para UTC-3 (subtrair 3 horas)
     date.setUTCHours(hours - 3)
-    // Tratar se passar para dia anterior
     if (date.getUTCHours() < 0) {
       date.setUTCDate(date.getUTCDate() - 1)
       date.setUTCHours(date.getUTCHours() + 24)
@@ -48,20 +45,12 @@ export async function POST(req: NextRequest) {
 
     if (newMonth) {
       const newDate = `${dayNum} ${newMonth}`
-      
-      await db
-        .from('matches')
-        .update({ match_time: newTime, match_date: newDate })
-        .eq('id', match.id)
-
+      await db.from('matches').update({ match_time: newTime, match_date: newDate }).eq('id', match.id)
       updated++
     }
   }
 
   return NextResponse.json({
-    data: {
-      updated,
-      message: `${updated} horários atualizados para horário de Brasília (UTC-3)`
-    }
+    data: { updated, message: `${updated} horários atualizados para horário de Brasília (UTC-3)` }
   })
 }

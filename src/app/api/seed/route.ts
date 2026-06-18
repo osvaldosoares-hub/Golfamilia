@@ -1,10 +1,9 @@
 // src/app/api/seed/route.ts
-// Rota para popular o banco de dados com jogos da Copa 2026
-// Chame GET /api/seed para rodar (apenas uma vez)
-
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { mapApiMatchToDbRow, fetchFromWcApi } from '@/lib/wc2026'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {

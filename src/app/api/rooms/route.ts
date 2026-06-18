@@ -4,6 +4,8 @@ import { getSession } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
 import { generateRoomCode } from '@/lib/utils'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/rooms — list my rooms
 export async function GET() {
   const session = await getSession()
@@ -90,13 +92,12 @@ export async function POST(req: NextRequest) {
     room_id: room.id,
     user_id: session.userId,
     coins_in_room: 0,
-   
   })
 
   if (memberError) {
     console.error(memberError)
     return NextResponse.json({ error: 'Erro ao adicionar membro' }, { status: 500 })
   }
-  
+
   return NextResponse.json({ data: room }, { status: 201 })
 }

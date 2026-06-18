@@ -2,7 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
-import { isBetLocked, isKnockoutBetReleased } from '@/lib/utils'
+
+export const dynamic = 'force-dynamic'
 
 // Whitelist de usuários que podem fazer apostas mesmo após o bloqueio global
 const BETTING_WHITELIST = new Set([
@@ -73,13 +74,8 @@ export async function POST(req: NextRequest) {
 
   if (!match) return NextResponse.json({ error: 'Jogo não encontrado' }, { status: 404 })
   // ✅ LIBERADO: Permite apostas em qualquer status de jogo (antes, durante, depois)
-  // Removida restrição: if (match.status !== 'open' && match.status !== 'scheduled')
-
   // ✅ LIBERADO: Palpites de mata-mata agora disponíveis a qualquer momento
-  // Removida restrição: if (match.phase !== 'group' && !isKnockoutBetReleased())
-
   // ✅ LIBERADO: Permite apostas mesmo dentro de 1h do jogo
-  // Removida restrição de tempo: if (isBetLocked(match.match_date, match.match_time) && !BETTING_WHITELIST.has(session.userId))
 
   // Check if existing bet
   const { data: existingBet } = await db
@@ -118,7 +114,6 @@ export async function POST(req: NextRequest) {
         predicted_home,
         predicted_away,
         predicted_qualifier,
-        
       })
       .select()
       .single()

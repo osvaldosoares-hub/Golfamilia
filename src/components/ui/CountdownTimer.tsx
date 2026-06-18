@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
-// World Cup 2026 bets lock at 6:00 PM UTC = 15:00 Brasília (first match kickoff - 1h)
+// World Cup 2026 started June 11, 2026
 const COPA_START_DATE = new Date('2026-06-11T18:00:00Z')
 
 interface TimeLeft {
@@ -31,13 +31,18 @@ function calculateTimeLeft(): TimeLeft | null {
 export default function CountdownTimer() {
   const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(null)
   const [isClient, setIsClient] = useState(false)
+  const [isCopaStarted, setIsCopaStarted] = useState(false)
 
   useEffect(() => {
     setIsClient(true)
-    setTimeLeft(calculateTimeLeft())
+    const tl = calculateTimeLeft()
+    setTimeLeft(tl)
+    setIsCopaStarted(tl === null)
 
     const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft())
+      const newTl = calculateTimeLeft()
+      setTimeLeft(newTl)
+      setIsCopaStarted(newTl === null)
     }, 1000)
 
     return () => clearInterval(timer)
@@ -47,34 +52,38 @@ export default function CountdownTimer() {
     return null
   }
 
-  if (timeLeft === null) {
+  // Copa já começou
+  if (isCopaStarted) {
     return (
       <div className="mt-6 animate-fade-up">
         <div className="inline-flex items-center gap-3 bg-gradient-to-r from-green/20 to-gold/20 border border-green/30 rounded-2xl px-6 py-4">
-          <div className="text-3xl">🏆</div>
+          <div className="text-3xl">⚽</div>
           <div className="text-center">
             <div className="text-lg font-black tracking-widest uppercase text-green">
-              Copa Started! ⚽️
+              Copa do Mundo 2026 EM ANDAMENTO! 🏆
             </div>
-            <div className="text-xs text-muted">Aposte agora!</div>
+            <div className="text-xs text-muted">Faça suas apostas!</div>
           </div>
         </div>
       </div>
     )
   }
 
-  // Calculate urgency level based on time remaining
+  // Ainda não começou - mostra countdown
+  if (timeLeft === null) {
+    return null
+  }
+
   const totalHours = timeLeft.days * 24 + timeLeft.hours
-  const isUrgent = totalHours < 24 // Less than 24 hours
-  const isVeryUrgent = totalHours < 1 // Less than 1 hour
-  
-  // Dynamic classes based on urgency
+  const isUrgent = totalHours < 24
+  const isVeryUrgent = totalHours < 1
+
   const containerClass = isVeryUrgent 
-    ? 'from-red/20 to-orange/20 border-red/40 glow-red animate-pulse' 
+    ? 'from-red/20 to-orange/20 border-red/40 animate-pulse' 
     : isUrgent 
       ? 'from-orange/20 to-gold/20 border-orange/40' 
       : 'from-green/10 to-gold/10 border-white/[0.06]'
-      
+
   const numberClass = isVeryUrgent ? 'text-red' : isUrgent ? 'text-orange' : 'text-green'
   const secondsClass = isVeryUrgent ? 'text-red' : isUrgent ? 'text-orange' : 'text-gold'
 

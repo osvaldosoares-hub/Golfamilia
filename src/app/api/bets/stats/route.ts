@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/bets/stats?room_id=xxx  — bet distribution per match in a room
 export async function GET(req: NextRequest) {
   const session = await getSession()
@@ -29,7 +31,6 @@ export async function GET(req: NextRequest) {
     .select('match_id, predicted_qualifier, predicted_home, predicted_away')
     .eq('room_id', roomId)
 
-  // Aggregate: for each match, count bets per qualifier and compute average score
   const stats: Record<string, {
     total: number
     counts: Record<string, number>
@@ -42,15 +43,7 @@ export async function GET(req: NextRequest) {
 
   for (const bet of allBets || []) {
     if (!stats[bet.match_id]) {
-      stats[bet.match_id] = {
-        total: 0,
-        counts: {},
-        avg_home: null,
-        avg_away: null,
-        scores_count: 0,
-        _sum_home: 0,
-        _sum_away: 0,
-      }
+      stats[bet.match_id] = { total: 0, counts: {}, avg_home: null, avg_away: null, scores_count: 0, _sum_home: 0, _sum_away: 0 }
     }
 
     if (typeof bet.predicted_home === 'number' && typeof bet.predicted_away === 'number') {
@@ -59,13 +52,10 @@ export async function GET(req: NextRequest) {
       stats[bet.match_id].scores_count++
     }
 
-    if (!bet.predicted_qualifier) {
-      continue
-    }
+    if (!bet.predicted_qualifier) continue
 
     stats[bet.match_id].total++
-    stats[bet.match_id].counts[bet.predicted_qualifier] =
-      (stats[bet.match_id].counts[bet.predicted_qualifier] || 0) + 1
+    stats[bet.match_id].counts[bet.predicted_qualifier] = (stats[bet.match_id].counts[bet.predicted_qualifier] || 0) + 1
   }
 
   for (const matchId of Object.keys(stats)) {
@@ -74,7 +64,6 @@ export async function GET(req: NextRequest) {
       item.avg_home = Number((item._sum_home / item.scores_count).toFixed(1))
       item.avg_away = Number((item._sum_away / item.scores_count).toFixed(1))
     }
-
     delete (item as { _sum_home?: number })._sum_home
     delete (item as { _sum_away?: number })._sum_away
   }

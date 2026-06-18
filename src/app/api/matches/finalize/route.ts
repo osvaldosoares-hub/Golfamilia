@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { finalizeMatchAndScore } from '@/lib/match-finalize'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(req: NextRequest) {
   const { match_id, home_score, away_score } = await req.json()
 

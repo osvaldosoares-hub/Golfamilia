@@ -125,12 +125,6 @@ function buildUtcDate(matchDate: string, matchTime: string, year = new Date().ge
   ))
 }
 
-/** Formata horário do jogo para display
-    parseInt(hoursStr, 10),
-    parseInt(minutesStr, 10)
-  ))
-}
-
 /** Formata horário do jogo para display em horário brasileiro */
 // Os dados no banco estão em UTC — convertendo para America/Sao_Paulo
 export function formatMatchTimeForDisplay(matchDate: string, matchTime: string): string {

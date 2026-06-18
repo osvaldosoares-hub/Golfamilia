@@ -4,6 +4,10 @@ import { redirect } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase'
 import LobbyClient from './LobbyClient'
 
+// Força renderização dinâmica para evitar cache de página logada
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+
 export default async function LobbyPage() {
   const session = await getSession()
   if (!session) redirect('/login')
@@ -24,17 +28,17 @@ export default async function LobbyPage() {
     .from('room_members')
     .select('room_id, coins_in_room')
     .eq('user_id', session.userId)
-  
+
   let rooms: any[] = []
   if (memberships?.length) {
     const roomIds = memberships.map(m => m.room_id)
-    const { data: roomsData, error } = await db
+    const { data: roomsData } = await db
       .from('rooms')
       .select('id, code, name, owner_id, is_active, created_at')
       .in('id', roomIds)
       .eq('is_active', true)
       .order('created_at', { ascending: false })
-    
+
     // Member counts
     const { data: memberCounts } = await db
       .from('room_members')
@@ -53,7 +57,6 @@ export default async function LobbyPage() {
       my_points: membershipMap[r.id]?.total_points || 0,
     }))
   }
-  
 
   return <LobbyClient user={user} initialRooms={rooms} />
 }

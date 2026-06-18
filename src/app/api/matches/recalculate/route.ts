@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { finalizeMatchAndScore } from '@/lib/match-finalize'
 
+export const dynamic = 'force-dynamic'
+
 interface RecalcMatchRow {
   id: string
   home_score: number | null
@@ -25,7 +27,6 @@ function isAuthorized(req: NextRequest): boolean {
 }
 
 export async function POST(req: NextRequest) {
-  // Permite requisições do frontend sem autorização
   const isExternalCall = !!req.headers.get('x-sync-secret') || !!req.headers.get('authorization')
   if (isExternalCall && !isAuthorized(req)) {
     return NextResponse.json({ error: 'Não autorizado para recálculo' }, { status: 401 })
@@ -44,14 +45,10 @@ export async function POST(req: NextRequest) {
       .not('home_score', 'is', null)
       .not('away_score', 'is', null)
 
-    // Se especifica match_id ou group_label, permite processar mesmo se status não for 'finished'
     if (match_id) {
       query = query.eq('id', match_id)
     } else if (group_label) {
       query = query.eq('phase', 'group').eq('group_label', group_label)
-    } else {
-      // Processa TODOS os jogos que têm placar, independentemente do status (acabado ou não)
-      // Isso permite recalcular pontos quando placares são alterados manualmente no BD
     }
 
     const { data: matches, error } = await query.returns<RecalcMatchRow[]>()
@@ -66,10 +63,7 @@ export async function POST(req: NextRequest) {
       if (match.home_score == null || match.away_score == null) continue
 
       const result = await finalizeMatchAndScore(
-        db,
-        match.id,
-        match.home_score,
-        match.away_score,
+        db, match.id, match.home_score, match.away_score,
         { allowAlreadyFinished: true }
       )
 

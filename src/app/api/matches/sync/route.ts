@@ -3,6 +3,8 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { finalizeMatchAndScore } from '@/lib/match-finalize'
 import { mapApiMatchToDbRow, fetchFromWcApi } from '@/lib/wc2026'
 
+export const dynamic = 'force-dynamic'
+
 interface ExistingMatchStatus {
   id: string
   match_code: string
@@ -36,8 +38,6 @@ function isAuthorized(req: NextRequest): boolean {
 }
 
 export async function GET(req: NextRequest) {
-  // Permite requisições do frontend sem autorização (dados públicos de jogos)
-  // Para sync externo (cron), usar x-sync-secret
   const isExternalCall = !!req.headers.get('x-sync-secret') || !!req.headers.get('authorization')
   if (isExternalCall && !isAuthorized(req)) {
     return NextResponse.json({ error: 'Não autorizado para sincronização' }, { status: 401 })
@@ -48,7 +48,6 @@ export async function GET(req: NextRequest) {
     let apiSuccess = false
     let syncedRows: SyncedMatch[] = []
 
-    // 1. Tenta buscar da API externa
     const apiMatches = await fetchFromWcApi()
 
     if (apiMatches) {
@@ -63,10 +62,8 @@ export async function GET(req: NextRequest) {
         .returns<ExistingMatchStatus[]>()
 
       const beforeStatusMap = new Map<string, string>()
-      const beforeScoreMap = new Map<string, { home_score: number | null; away_score: number | null }>()
       beforeSync?.forEach((match) => {
         beforeStatusMap.set(match.match_code, match.status)
-        beforeScoreMap.set(match.match_code, { home_score: match.home_score, away_score: match.away_score })
       })
 
       const { data: upsertedRows, error: upsertError } = await db
@@ -95,32 +92,17 @@ export async function GET(req: NextRequest) {
         if (!hasScores) continue
         if (!becameFinished && !(isFinished && homeScore != null && awayScore != null)) continue
 
-        const result = await finalizeMatchAndScore(
-          db,
-          match.id,
-          homeScore,
-          awayScore,
-          { allowAlreadyFinished: true }
-        )
-
+        const result = await finalizeMatchAndScore(db, match.id, homeScore, awayScore, { allowAlreadyFinished: true })
         finalizedNow++
         betsProcessed += result.betsProcessed
       }
 
       return NextResponse.json({
-        data: {
-          source: 'api',
-          synced_matches: syncedRows.length,
-          finalized_matches: finalizedNow,
-          processed_bets: betsProcessed,
-        }
+        data: { source: 'api', synced_matches: syncedRows.length, finalized_matches: finalizedNow, processed_bets: betsProcessed }
       })
     }
 
-    // 2. Se a API externa falhou, buscar jogos no banco que têm placar
-    //    e ainda têm bets com pontos não calculados (points_earned IS NULL)
-    //    Isso cobre tanto jogos com status != finished quanto jogos que o usuário
-    //    atualizou manualmente no banco (incluindo status = finished)
+    // Fallback: process matches with scores that have pending bets
     const { data: matchesWithScores } = await db
       .from('matches')
       .select('id, match_code, status, home_score, away_score')
@@ -130,12 +112,11 @@ export async function GET(req: NextRequest) {
 
     if (!matchesWithScores || matchesWithScores.length === 0) {
       return NextResponse.json(
-        { error: 'Não foi possível obter dados da API externa (limite diário ou erro HTTP) e não há jogos com placar no banco' },
+        { error: 'API externa indisponível e sem jogos com placar no banco' },
         { status: 502 }
       )
     }
 
-    // Filtrar apenas jogos que têm bets com points_earned = null (precisam ser processados)
     const pendingMatches: ExistingMatchStatus[] = []
     for (const match of matchesWithScores) {
       const { count } = await db
@@ -151,7 +132,7 @@ export async function GET(req: NextRequest) {
 
     if (pendingMatches.length === 0) {
       return NextResponse.json(
-        { error: 'Não foi possível obter dados da API externa (limite diário ou erro HTTP). Nenhuma aposta pendente para processar.' },
+        { error: 'API externa indisponível. Nenhuma aposta pendente para processar.' },
         { status: 502 }
       )
     }
@@ -164,34 +145,18 @@ export async function GET(req: NextRequest) {
       const awayScore = match.away_score
       if (homeScore == null || awayScore == null) continue
 
-      const result = await finalizeMatchAndScore(
-        db,
-        match.id,
-        homeScore,
-        awayScore,
-        { allowAlreadyFinished: true }
-      )
-
+      const result = await finalizeMatchAndScore(db, match.id, homeScore, awayScore, { allowAlreadyFinished: true })
       finalizedNow++
       betsProcessed += result.betsProcessed
     }
 
     return NextResponse.json({
-      data: {
-        source: 'manual',
-        synced_matches: 0,
-        finalized_matches: finalizedNow,
-        processed_bets: betsProcessed,
-      }
+      data: { source: 'manual', synced_matches: 0, finalized_matches: finalizedNow, processed_bets: betsProcessed }
     })
 
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Erro interno de sincronização'
-    const stack = err instanceof Error ? err.stack : ''
-    console.error('[Sync] Erro completo:', { message, stack })
-    if (err instanceof Error && err.cause) {
-      console.error('[Sync] Causa:', err.cause)
-    }
-    return NextResponse.json({ error: message, detail: stack }, { status: 500 })
+    console.error('[Sync] Erro:', message)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
