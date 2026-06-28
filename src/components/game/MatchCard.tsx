@@ -2,7 +2,7 @@
 // src/components/game/MatchCard.tsx
 import { useState, useEffect } from 'react'
 import type { Match, Bet } from '@/types'
-import { msUntilLockout, formatMatchTimeForDisplay } from '@/lib/utils'
+import { msUntilLockout, formatMatchTimeForDisplay, getCorrectedMatchTime } from '@/lib/utils'
 
 interface BetData {
   predicted_home: number
@@ -178,8 +178,8 @@ const countdownLabel = (() => {
       <div className="p-5">
 {/* Meta */}
         <div className="flex justify-between items-center mb-4">
-          <span className="text-xs text-muted font-mono">
-            ⚽ Grupo {match.group_label} · {match.match_date} {match.match_time}
+<span className="text-xs text-muted font-mono">
+            ⚽ {match.phase} {match.group_label} · {match.match_date} {getCorrectedMatchTime(match.match_time)}
           </span>
 <div className="flex items-center gap-1.5">
 {/* 2x Badge with Fire Animation */}

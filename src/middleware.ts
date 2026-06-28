@@ -6,9 +6,8 @@ import { getSessionFromRequest } from '@/lib/auth'
 const PUBLIC_PATHS = [
   '/login', '/register',
   '/api/auth/login', '/api/auth/register', '/api/auth/logout',
-  '/api/matches/finalize', '/api/matches/sync',
-  '/api/matches/recalculate', '/api/matches/fix-times',
-  '/api/seed', '/api/matches/cleanup', '/api/matches/reset-bets',
+  '/api/matches/finalize', '/api/matches/sync', '/api/matches/fix-times',
+  '/api/seed', '/api/matches/cleanup',
   '/_next/static', '/_next/image', '/favicon',
 ]
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import type { Bet, GroupBet, Match } from '@/types'
-import { getPhaseLabel, msUntilLockout } from '@/lib/utils'
+import { getPhaseLabel, msUntilLockout, getCorrectedMatchTime } from '@/lib/utils'
 
 interface BetData {
   predicted_home: number
@@ -268,7 +268,7 @@ export default function KnockoutBracket({ matches, bets, groupBets, teamMetaByAb
 
     const merged: Match[] = [...normalizedApiMatches]
 
-    KNOCKOUT_TEMPLATE.forEach(item => {
+KNOCKOUT_TEMPLATE.forEach(item => {
       if (byNo.has(item.no)) return
 
       merged.push({
@@ -287,7 +287,7 @@ export default function KnockoutBracket({ matches, bets, groupBets, teamMetaByAb
         home_score: undefined,
         away_score: undefined,
         qualifier: undefined,
-        status: 'locked',
+        status: 'open',
         created_at: '',
       })
     })
@@ -684,9 +684,10 @@ function CompactBracketMatchNode({
     else setQualifier('DRAW')
   }, [scoreH, scoreA, qualifier, match.display_home_abbr, match.display_away_abbr])
 
-  const isTemplate = match.id.startsWith('template-')
+const isTemplate = match.id.startsWith('template-')
   const timeLocked = timeLeft <= 0
-  const locked = isTemplate || !isReleased || match.status !== 'open' || timeLocked
+  // Liberação total: só bloquia se isReleased for false ou se o horário do jogo já passou
+  const locked = !isReleased || timeLocked
   const hasBet = !!existingBet
   const canSubmit = scoreH !== '' && scoreA !== '' && !locked
 
@@ -728,10 +729,10 @@ function CompactBracketMatchNode({
         </>
       )}
 
-      <form onSubmit={submitBet} className="rounded-[20px] border border-white/[0.1] bg-white/[0.04] px-2.5 py-2.5 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur-sm">
+<form onSubmit={submitBet} className="rounded-[20px] border border-white/[0.1] bg-white/[0.04] px-2.5 py-2.5 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur-sm">
         <div className="mb-2 flex items-center justify-between gap-2 text-[9px] font-mono text-white/45">
           <span>{match.match_code}</span>
-          <span>{match.match_date}</span>
+          <span>{match.match_date} {getCorrectedMatchTime(match.match_time)}</span>
         </div>
 
         <div className="space-y-1.5">
@@ -773,7 +774,7 @@ function CompactBracketMatchNode({
             />
           </div>
 
-          <div className="mt-2.5 flex items-center justify-between gap-2">
+<div className="mt-2.5 flex items-center justify-between gap-2">
             <span className={`text-[9px] ${hasBet ? 'text-green' : 'text-white/35'}`}>
               {isTemplate ? 'Aguardando API' : hasBet ? 'Simulado' : 'Sem palpite'}
             </span>
@@ -785,6 +786,33 @@ function CompactBracketMatchNode({
               {loading ? '...' : hasBet ? 'Atualizar' : 'Salvar'}
             </button>
           </div>
+
+          {/* Seleção do vencedor */}
+          {!locked && !hasBet && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              <button
+                type="button"
+                onClick={() => setQualifier(match.display_home_abbr)}
+                className={`text-[8px] px-1.5 py-0.5 rounded border font-bold ${qualifier === match.display_home_abbr ? 'bg-green/10 border-green/40 text-green' : 'bg-dark-3 border-white/[0.08] text-muted hover:border-white/20'}`}
+              >
+                {match.display_home_flag}
+              </button>
+              <button
+                type="button"
+                onClick={() => setQualifier('DRAW')}
+                className={`text-[8px] px-1.5 py-0.5 rounded border font-bold ${qualifier === 'DRAW' ? 'bg-green/10 border-green/40 text-green' : 'bg-dark-3 border-white/[0.08] text-muted hover:border-white/20'}`}
+              >
+                =
+              </button>
+              <button
+                type="button"
+                onClick={() => setQualifier(match.display_away_abbr)}
+                className={`text-[8px] px-1.5 py-0.5 rounded border font-bold ${qualifier === match.display_away_abbr ? 'bg-green/10 border-green/40 text-green' : 'bg-dark-3 border-white/[0.08] text-muted hover:border-white/20'}`}
+              >
+                {match.display_away_flag}
+              </button>
+            </div>
+          )}
         </div>
       </form>
     </div>
@@ -829,10 +857,11 @@ function KnockoutMatchCard({ match, existingBet, onBet, isReleased, betStats }: 
     setQualifier(existingBet.predicted_qualifier || '')
   }, [existingBet, editing])
 
-  const timeLocked = timeLeft <= 0
+const timeLocked = timeLeft <= 0
   const isTemplate = match.id.startsWith('template-')
   const hasBet = !!existingBet && !editing
-  const locked = isTemplate || !isReleased || match.status !== 'open' || timeLocked
+  // Liberação total: só bloqueia se isReleased for false ou se o horário do jogo já passou
+  const locked = !isReleased || timeLocked
   const canSubmit = scoreH !== '' && scoreA !== ''
 
   async function submitBet(e: React.FormEvent) {
@@ -863,10 +892,10 @@ function KnockoutMatchCard({ match, existingBet, onBet, isReleased, betStats }: 
     else setQualifier('DRAW')
   }, [scoreH, scoreA, qualifier, match.display_home_abbr, match.display_away_abbr])
 
-  return (
+return (
     <div className="card p-4">
       <div className="flex items-center justify-between gap-2 mb-3">
-        <span className="text-[11px] text-muted font-mono">{match.match_code} · {match.match_date} {match.match_time}</span>
+        <span className="text-[11px] text-muted font-mono">{match.match_code} · {match.match_date} {getCorrectedMatchTime(match.match_time)}</span>
         <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${locked ? 'bg-red/10 text-red' : hasBet ? 'bg-green/10 text-green' : 'bg-white/[0.06] text-muted'}`}>
           {locked ? '🔒' : hasBet ? '✅' : '🕐'}
         </span>

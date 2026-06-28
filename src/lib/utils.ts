@@ -56,7 +56,8 @@ export function getDateNumberInSaoPaulo(date: Date = new Date()): number {
 }
 
 export function isKnockoutBetReleased(date: Date = new Date()): boolean {
-  return getDateNumberInSaoPaulo(date) >= KNOCKOUT_RELEASE_DATE_NUMBER
+  // Liberação imediata – usuários podem apostAR NO MATA-MATA DESDE JÁ
+  return true
 }
 
 /** Get the next upcoming match that starts within the specified minutes */
@@ -99,6 +100,10 @@ const GLOBAL_LOCKOUT_TIME = new Date('2026-06-11T18:00:00Z')
 
 const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
+// Offset para corrigir horário do banco que está com 3h a menos no mata-mata
+// O banco tem 13h quando deveria ser 16h, então adicionamos 3 horas (em ms)
+const KNOCKOUT_TIME_CORRECTION_MS = 3 * 60 * 60 * 1000 // 3 horas em milliseconds
+
 /** Extrai componentes de data e hora de strings como "11 Jun" e "16:00" */
 // Os dados no banco já estão em horário Brasília (corrigidos manualmente)
 function extractTimeComponents(matchDate: string, matchTime: string) {
@@ -126,10 +131,12 @@ function buildUtcDate(matchDate: string, matchTime: string, year = new Date().ge
 }
 
 /** Formata horário do jogo para display em horário brasileiro */
-// Os dados no banco estão em UTC — convertendo para America/Sao_Paulo
+// Os dados no banco estão com 3h a menos no mata-mata - aplicamos a correção
 export function formatMatchTimeForDisplay(matchDate: string, matchTime: string): string {
-  const utcDate = buildUtcDate(matchDate, matchTime)
-
+  // Primeiro obtemos a data base (com 3h a menos)
+  const baseDate = parseMatchDateTime(matchDate, matchTime)
+  
+  // Formatamos já com o horário correto (parseMatchDateTime já aplica a correção de 3h)
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Sao_Paulo',
     day: 'numeric',
@@ -139,7 +146,7 @@ export function formatMatchTimeForDisplay(matchDate: string, matchTime: string):
     hourCycle: 'h23'
   })
 
-  const parts = formatter.formatToParts(utcDate)
+  const parts = formatter.formatToParts(baseDate)
   const get = (type: string) => parts.find(p => p.type === type)?.value ?? ''
 
   const day = parseInt(get('day'), 10)
@@ -149,11 +156,12 @@ export function formatMatchTimeForDisplay(matchDate: string, matchTime: string):
 }
 
 /** Parse match_date ("11 Jun") + match_time ("16:00") para Date */
-// Os dados no banco já estão em Brasília
+// Os dados no banco já estão em Brasília, mas com 3h a menos no mata-mata - adicionamos o offset
 export function parseMatchDateTime(matchDate: string, matchTime: string): Date {
   const { day, monthIndex, hours, minutes } = extractTimeComponents(matchDate, matchTime)
-  // Criar data usando horário de Brasília (ano fixo 2026)
-  return new Date(2026, monthIndex, day, hours, minutes)
+  // Criar data usando horário de Brasília (ano fixo 2026) + 3h de correção
+  const baseDate = new Date(2026, monthIndex, day, hours, minutes)
+  return new Date(baseDate.getTime() + KNOCKOUT_TIME_CORRECTION_MS)
 }
 
 /** Returns milliseconds until lockout.
@@ -166,6 +174,20 @@ export function msUntilLockout(matchDate: string, matchTime: string): number {
 /** Returns true if bets should be blocked (at match time) */
 export function isBetLocked(matchDate: string, matchTime: string): boolean {
   return msUntilLockout(matchDate, matchTime) <= 0
+}
+
+/** Returns corrected match time string (with +3h offset for knockout matches) */
+// This returns "16:00" instead of "13:00" for display
+export function getCorrectedMatchTime(matchTime: string): string {
+  const [hoursStr, minutesStr] = matchTime.split(':')
+  const hours = parseInt(hoursStr, 10)
+  const minutes = parseInt(minutesStr, 10)
+  
+  // Apply the 3-hour correction
+  const correctedHours = hours + 3
+  
+  // Format back to HH:MM
+  return `${String(correctedHours).padStart(2, '0')}:${minutesStr}`
 }
 
 export function calcPoints(
