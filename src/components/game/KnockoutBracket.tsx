@@ -690,6 +690,9 @@ const isTemplate = match.id.startsWith('template-')
   const locked = !isReleased || timeLocked
   const hasBet = !!existingBet
   const canSubmit = scoreH !== '' && scoreA !== '' && !locked
+  
+  // Verifica se o jogo tem resultado real (finalizado)
+  const isFinished = match.status === 'finished' && match.home_score != null && match.away_score != null
 
   async function submitBet(e: React.FormEvent) {
     e.preventDefault()
@@ -732,6 +735,9 @@ const isTemplate = match.id.startsWith('template-')
 <form onSubmit={submitBet} className="rounded-[20px] border border-white/[0.1] bg-white/[0.04] px-2.5 py-2.5 shadow-[0_10px_24px_rgba(0,0,0,0.14)] backdrop-blur-sm">
         <div className="mb-2 flex items-center justify-between gap-2 text-[9px] font-mono text-white/45">
           <span>{match.match_code}</span>
+          {isFinished && (
+            <span className="text-green font-bold">✅ FINALIZADO</span>
+          )}
           <span>{match.match_date} {getCorrectedMatchTime(match.match_time)}</span>
         </div>
 
@@ -741,12 +747,18 @@ const isTemplate = match.id.startsWith('template-')
               <span className="text-sm">{match.display_home_flag}</span>
               <span className="truncate">{match.display_home_abbr}</span>
             </span>
+            {isFinished && (
+              <span className="text-gold font-bold text-sm">{match.home_score}</span>
+            )}
           </div>
           <div className="flex items-center justify-between gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-1.5">
             <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-bold">
               <span className="text-sm">{match.display_away_flag}</span>
               <span className="truncate">{match.display_away_abbr}</span>
             </span>
+            {isFinished && (
+              <span className="text-gold font-bold text-sm">{match.away_score}</span>
+            )}
           </div>
         </div>
 
@@ -863,6 +875,9 @@ const timeLocked = timeLeft <= 0
   // Liberação total: só bloqueia se isReleased for false ou se o horário do jogo já passou
   const locked = !isReleased || timeLocked
   const canSubmit = scoreH !== '' && scoreA !== ''
+  
+  // Verifica se o jogo tem resultado real (finalizado)
+  const isFinished = match.status === 'finished' && match.home_score != null && match.away_score != null
 
   async function submitBet(e: React.FormEvent) {
     e.preventDefault()

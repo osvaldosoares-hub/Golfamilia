@@ -77,8 +77,11 @@ const timeLocked = timeLeft <= 0
 
   const canSubmit = scoreH !== '' && scoreA !== ''
 
+const hasRealResult = match.status === 'finished' && match.home_score != null && match.away_score != null
+  const hasRealResultOrLive = (match.status === 'finished' || match.status === 'live') && match.home_score != null && match.away_score != null
+
   const realWinnerLabel = (() => {
-    if (!isFinished) return null
+    if (!hasRealResult) return null
     if (match.qualifier === 'DRAW') return '🤝 Empate'
     if (match.qualifier === match.home_abbr) return `${match.home_flag} ${match.home_abbr}`
     if (match.qualifier === match.away_abbr) return `${match.away_flag} ${match.away_abbr}`
@@ -193,7 +196,7 @@ const countdownLabel = (() => {
                 </div>
               </div>
             )}
-{/* Status Badge: AO VIVO, Marcado, Encerrado/Terminado */}
+{/* Status Badge: AO VIVO, Marcado, Encerrado/Terminado, FINALIZADO */}
             {isLive ? (
               <div className="text-xs font-bold px-2.5 py-1 rounded-full bg-red/10 text-red animate-pulse flex items-center gap-1">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-red animate-ping" />
@@ -202,6 +205,12 @@ const countdownLabel = (() => {
             ) : isScheduled && !isLive ? (
               <div className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue/10 text-blue flex items-center gap-1">
                 <span>📅 Marcado</span>
+              </div>
+) : hasRealResult ? (
+              <div className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-green/20 text-green flex items-center gap-1">
+                <span>✅</span>
+                <span>FINALIZADO</span>
+                <span>✅</span>
               </div>
 ) : locked || timeLeft <= 0 ? (
               <div className="text-xs font-bold px-2.5 py-1 rounded-full bg-red/10 text-red flex items-center gap-1">
@@ -262,15 +271,21 @@ const countdownLabel = (() => {
                       </div>
                     </div>
                   )}
-                  {/* Mostra resultado SEMPRE (com ou sem aposta) */}
+{/* Mostra resultado SEMPRE (com ou sem aposta) - com siglas quando finalizado */}
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-muted uppercase tracking-widest ">R</span>
-                    <div className="w-10 h-10 flex items-center justify-center bg-dark-3 border border-gold/30 rounded-lg font-mono text-lg font-black text-gold">
-                      {match.home_score}
+                    <div className="flex flex-col items-center">
+                      <div className="w-10 h-10 flex items-center justify-center bg-dark-3 border border-gold/30 rounded-lg font-mono text-lg font-black text-gold">
+                        {match.home_score}
+                      </div>
+                      <div className="text-[10px] text-gold font-bold mt-0.5">{match.home_abbr}</div>
                     </div>
                     <span className="text-muted text-lg font-bold">:</span>
-                    <div className="w-10 h-10 flex items-center justify-center bg-dark-3 border border-gold/30 rounded-lg font-mono text-lg font-black text-gold">
-                      {match.away_score}
+                    <div className="flex flex-col items-center">
+                      <div className="w-10 h-10 flex items-center justify-center bg-dark-3 border border-gold/30 rounded-lg font-mono text-lg font-black text-gold">
+                        {match.away_score}
+                      </div>
+                      <div className="text-[10px] text-gold font-bold mt-0.5">{match.away_abbr}</div>
                     </div>
                   </div>
                 </div>
