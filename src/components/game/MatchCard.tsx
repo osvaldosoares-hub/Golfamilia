@@ -182,7 +182,7 @@ const countdownLabel = (() => {
 {/* Meta */}
         <div className="flex justify-between items-center mb-4">
 <span className="text-xs text-muted font-mono">
-            ⚽ {match.phase} {match.group_label} · {match.match_date} {getCorrectedMatchTime(match.match_time)}
+            ⚽ {match.phase} {match.group_label} · {match.match_date} {match.match_time}
           </span>
 <div className="flex items-center gap-1.5">
 {/* 2x Badge with Fire Animation */}
