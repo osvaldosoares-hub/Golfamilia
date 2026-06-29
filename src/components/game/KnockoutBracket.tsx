@@ -738,7 +738,7 @@ const isTemplate = match.id.startsWith('template-')
           {isFinished && (
             <span className="text-green font-bold">✅ FINALIZADO</span>
           )}
-          <span>{match.match_date} {getCorrectedMatchTime(match.match_time)}</span>
+          <span>{match.match_date} {match.match_time}</span>
         </div>
 
         <div className="space-y-1.5">
