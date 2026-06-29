@@ -159,9 +159,7 @@ export function formatMatchTimeForDisplay(matchDate: string, matchTime: string):
 // Os dados no banco já estão em Brasília, mas com 3h a menos no mata-mata - adicionamos o offset
 export function parseMatchDateTime(matchDate: string, matchTime: string): Date {
   const { day, monthIndex, hours, minutes } = extractTimeComponents(matchDate, matchTime)
-  // Criar data usando horário de Brasília (ano fixo 2026) + 3h de correção
-  const baseDate = new Date(2026, monthIndex, day, hours, minutes)
-  return new Date(baseDate.getTime() + KNOCKOUT_TIME_CORRECTION_MS)
+  return new Date(2026, monthIndex, day, hours, minutes) // sem correção
 }
 
 /** Returns milliseconds until lockout.
